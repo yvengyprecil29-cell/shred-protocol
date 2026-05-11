@@ -68,6 +68,10 @@ export interface FastWalkRow {
   date: string;
   duration_minutes: number;
   distance_km: number | null;
+  /** Treadmill / route incline, percent (e.g. 12 = 12%) */
+  incline_percent: number | null;
+  /** Average or target speed, km/h */
+  speed_kmh: number | null;
   notes: string | null;
 }
 

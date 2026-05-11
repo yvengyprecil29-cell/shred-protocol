@@ -23,6 +23,10 @@ type Body = {
   date: string;
   duration_minutes: number;
   distance_km?: number | null;
+  /** Treadmill / route incline, percent (e.g. 12) */
+  incline_percent?: number | null;
+  /** km/h */
+  speed_kmh?: number | null;
   notes?: string | null;
 };
 
@@ -38,9 +42,17 @@ export async function POST(req: Request) {
   }
   const r = db
     .prepare(
-      `INSERT INTO fast_walks (session_id, date, duration_minutes, distance_km, notes) VALUES (?,?,?,?,?)`,
+      `INSERT INTO fast_walks (session_id, date, duration_minutes, distance_km, incline_percent, speed_kmh, notes) VALUES (?,?,?,?,?,?,?)`,
     )
-    .run(body.session_id, body.date, body.duration_minutes, body.distance_km ?? null, body.notes ?? null);
+    .run(
+      body.session_id,
+      body.date,
+      body.duration_minutes,
+      body.distance_km ?? null,
+      body.incline_percent ?? null,
+      body.speed_kmh ?? null,
+      body.notes ?? null,
+    );
   const row = db.prepare(`SELECT * FROM fast_walks WHERE id = ?`).get(Number(r.lastInsertRowid)) as FastWalkRow;
   return NextResponse.json({ ok: true, data: row });
 }

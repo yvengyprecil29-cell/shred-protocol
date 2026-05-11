@@ -102,6 +102,8 @@ function initSchema(db: Database.Database) {
       date TEXT NOT NULL,
       duration_minutes REAL NOT NULL,
       distance_km REAL,
+      incline_percent REAL,
+      speed_kmh REAL,
       notes TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );
@@ -123,4 +125,16 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_wl_session_date ON workout_logs(session_id, date);
     CREATE INDEX IF NOT EXISTS idx_walks_session ON fast_walks(session_id, date);
   `);
+  migrateFastWalksColumns(db);
+}
+
+function migrateFastWalksColumns(db: Database.Database) {
+  const cols = db.prepare(`PRAGMA table_info(fast_walks)`).all() as { name: string }[];
+  const names = new Set(cols.map((c) => c.name));
+  if (!names.has("incline_percent")) {
+    db.exec(`ALTER TABLE fast_walks ADD COLUMN incline_percent REAL`);
+  }
+  if (!names.has("speed_kmh")) {
+    db.exec(`ALTER TABLE fast_walks ADD COLUMN speed_kmh REAL`);
+  }
 }

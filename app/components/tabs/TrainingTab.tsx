@@ -50,6 +50,8 @@ export function TrainingTab() {
   >({});
 
   const [walkDur, setWalkDur] = useState("25");
+  const [walkIncline, setWalkIncline] = useState("12");
+  const [walkSpeed, setWalkSpeed] = useState("6.5");
   const [walkKm, setWalkKm] = useState("");
   const [walkNotes, setWalkNotes] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -444,13 +446,16 @@ export function TrainingTab() {
         date: logDate,
         duration_minutes: dur,
         distance_km: walkKm ? Number(walkKm) : null,
+        incline_percent:
+          walkIncline.trim() === "" ? null : Number.isFinite(Number(walkIncline)) ? Number(walkIncline) : null,
+        speed_kmh: walkSpeed.trim() === "" ? null : Number.isFinite(Number(walkSpeed)) ? Number(walkSpeed) : null,
         notes: walkNotes || null,
       }),
     });
     const j = await res.json();
     if (res.ok && j.ok) {
       setWalks((w) => [j.data as FastWalkRow, ...w]);
-      setMsg("Fast walk logged");
+      setMsg("Marche enregistrée");
       return;
     }
     const all = localStore.getWalks() as FastWalkRow[];
@@ -460,11 +465,14 @@ export function TrainingTab() {
       date: logDate,
       duration_minutes: dur,
       distance_km: walkKm ? Number(walkKm) : null,
+      incline_percent:
+        walkIncline.trim() === "" ? null : Number.isFinite(Number(walkIncline)) ? Number(walkIncline) : null,
+      speed_kmh: walkSpeed.trim() === "" ? null : Number.isFinite(Number(walkSpeed)) ? Number(walkSpeed) : null,
       notes: walkNotes || null,
     };
     localStore.setWalks([row, ...all]);
     setWalks((w) => [row, ...w]);
-    setMsg("Walk saved locally");
+    setMsg("Marche enregistrée (local)");
   }
 
   return (
@@ -781,11 +789,14 @@ export function TrainingTab() {
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 space-y-3">
-        <h2 className="font-display text-2xl tracking-wide">Post-workout fast walk</h2>
-        <p className="text-sm text-shred-muted">Suggested 20–30 minutes. Links to the same session + date.</p>
-        <div className="grid sm:grid-cols-4 gap-3">
+        <h2 className="font-display text-2xl tracking-wide">Marche rapide post-séance</h2>
+        <p className="text-sm text-shred-muted">
+          Saisis le temps, la pente (tapis ou profil) et la vitesse. Optionnel : distance et notes. Même session +
+          date que le log séance.
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <label className="text-xs font-mono text-shred-muted block">
-            Duration (min)
+            Temps (min)
             <input
               type="number"
               value={walkDur}
@@ -794,15 +805,38 @@ export function TrainingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Distance (km, optional)
+            Pente (%)
             <input
               type="number"
+              step="0.5"
+              value={walkIncline}
+              onChange={(e) => setWalkIncline(e.target.value)}
+              placeholder="ex. 12"
+              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
+            />
+          </label>
+          <label className="text-xs font-mono text-shred-muted block">
+            Vitesse (km/h)
+            <input
+              type="number"
+              step="0.1"
+              value={walkSpeed}
+              onChange={(e) => setWalkSpeed(e.target.value)}
+              placeholder="ex. 6.5"
+              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
+            />
+          </label>
+          <label className="text-xs font-mono text-shred-muted block">
+            Distance (km, optionnel)
+            <input
+              type="number"
+              step="0.01"
               value={walkKm}
               onChange={(e) => setWalkKm(e.target.value)}
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
             />
           </label>
-          <label className="text-xs font-mono text-shred-muted sm:col-span-2 block">
+          <label className="text-xs font-mono text-shred-muted lg:col-span-2 block">
             Notes
             <input
               value={walkNotes}
@@ -816,17 +850,18 @@ export function TrainingTab() {
           onClick={() => void submitWalk()}
           className="rounded-shred border border-shred-border bg-shred-surface2 px-4 py-2 font-mono text-sm"
         >
-          Log fast walk
+          Enregistrer la marche
         </button>
         <p className="font-mono text-sm text-shred-accent3">
-          🚶 Weekly walks ({weekWalkLabel.wk}): {weekWalkLabel.done}/5 target sessions — count is walks logged this ISO
-          week.
+          🚶 Marches cette semaine ISO ({weekWalkLabel.wk}) : {weekWalkLabel.done}/5 — objectif séances avec marche
+          loguée.
         </p>
         {selectedSession ? (
           <p className="text-xs text-shred-muted">
-            Session summary line:{" "}
+            Résumé :{" "}
             <span className="text-shred-text">
-              🚶 Fast walk: {walkDur || "?"} min post-workout ({selectedSession.name})
+              🚶 Marche rapide : {walkDur || "?"} min · pente {walkIncline || "—"}% · {walkSpeed || "—"} km/h
+              {walkKm ? ` · ${walkKm} km` : ""} ({selectedSession.name})
             </span>
           </p>
         ) : null}
