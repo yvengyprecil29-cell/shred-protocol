@@ -3,9 +3,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: ["better-sqlite3"],
-  },
+  experimental: {},
 };
 
 export default nextConfig;

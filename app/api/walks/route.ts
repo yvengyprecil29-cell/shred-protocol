@@ -12,10 +12,10 @@ function noDb() {
 }
 
 export async function GET() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return noDb();
-  const rows = db.prepare(`SELECT * FROM fast_walks ORDER BY date DESC, id DESC`).all() as FastWalkRow[];
-  return NextResponse.json({ ok: true, data: rows });
+  const result = await db.execute(`SELECT * FROM fast_walks ORDER BY date DESC, id DESC`);
+  return NextResponse.json({ ok: true, data: result.rows as unknown as FastWalkRow[] });
 }
 
 type Body = {
@@ -23,46 +23,32 @@ type Body = {
   date: string;
   duration_minutes: number;
   distance_km?: number | null;
-  /** Treadmill / route incline, percent (e.g. 12) */
   incline_percent?: number | null;
-  /** km/h */
   speed_kmh?: number | null;
   notes?: string | null;
 };
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return noDb();
   const body = (await req.json()) as Body;
   if (!body?.session_id || !body?.date || body.duration_minutes == null) {
-    return NextResponse.json(
-      { ok: false, error: "session_id, date, duration_minutes required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ ok: false, error: "session_id, date, duration_minutes required" }, { status: 400 });
   }
-  const r = db
-    .prepare(
-      `INSERT INTO fast_walks (session_id, date, duration_minutes, distance_km, incline_percent, speed_kmh, notes) VALUES (?,?,?,?,?,?,?)`,
-    )
-    .run(
-      body.session_id,
-      body.date,
-      body.duration_minutes,
-      body.distance_km ?? null,
-      body.incline_percent ?? null,
-      body.speed_kmh ?? null,
-      body.notes ?? null,
-    );
-  const row = db.prepare(`SELECT * FROM fast_walks WHERE id = ?`).get(Number(r.lastInsertRowid)) as FastWalkRow;
-  return NextResponse.json({ ok: true, data: row });
+  const r = await db.execute({
+    sql: `INSERT INTO fast_walks (session_id, date, duration_minutes, distance_km, incline_percent, speed_kmh, notes) VALUES (?,?,?,?,?,?,?)`,
+    args: [body.session_id, body.date, body.duration_minutes, body.distance_km ?? null, body.incline_percent ?? null, body.speed_kmh ?? null, body.notes ?? null],
+  });
+  const result = await db.execute({ sql: `SELECT * FROM fast_walks WHERE id = ?`, args: [Number(r.lastInsertRowid)] });
+  return NextResponse.json({ ok: true, data: result.rows[0] as unknown as FastWalkRow });
 }
 
 export async function DELETE(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return noDb();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-  db.prepare(`DELETE FROM fast_walks WHERE id = ?`).run(Number(id));
+  await db.execute({ sql: `DELETE FROM fast_walks WHERE id = ?`, args: [Number(id)] });
   return NextResponse.json({ ok: true });
 }

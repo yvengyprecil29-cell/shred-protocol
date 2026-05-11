@@ -1,47 +1,55 @@
-import fs from "fs";
-import path from "path";
-import type Database from "better-sqlite3";
+import { createClient, type Client } from "@libsql/client";
 
-let dbInstance: Database.Database | null = null;
-let dbError: Error | null = null;
+let _client: Client | null = null;
+let _initialized = false;
+let _error: Error | null = null;
 
 export function getDbError(): Error | null {
-  return dbError;
+  return _error;
 }
 
-export function getDb(): Database.Database | null {
-  if (dbInstance) return dbInstance;
+function makeClient(): Client | null {
+  if (_client) return _client;
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url) {
+    _error = new Error("TURSO_DATABASE_URL not configured");
+    return null;
+  }
   try {
-    const DatabaseConstructor = require("better-sqlite3") as typeof import("better-sqlite3"); // eslint-disable-line
-    const dataDir = path.join(process.cwd(), "data");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    const dbPath = path.join(dataDir, "shred.db");
-    dbInstance = new DatabaseConstructor(dbPath);
-    dbInstance.pragma("journal_mode = WAL");
-    dbInstance.pragma("foreign_keys = ON");
-    initSchema(dbInstance);
-    dbError = null;
-    return dbInstance;
+    _client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN ?? "" });
+    return _client;
   } catch (e) {
-    dbError = e instanceof Error ? e : new Error(String(e));
+    _error = e instanceof Error ? e : new Error(String(e));
     return null;
   }
 }
 
-function initSchema(db: Database.Database) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
+export async function getDb(): Promise<Client | null> {
+  const client = makeClient();
+  if (!client) return null;
+  if (_initialized) return client;
+  try {
+    await initSchema(client);
+    _initialized = true;
+    _error = null;
+    return client;
+  } catch (e) {
+    _error = e instanceof Error ? e : new Error(String(e));
+    return null;
+  }
+}
+
+async function initSchema(db: Client) {
+  await db.batch([
+    `CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
       date TEXT,
       template INTEGER NOT NULL DEFAULT 0,
       notes TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS daily_logs (
+    )`,
+    `CREATE TABLE IF NOT EXISTS daily_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL UNIQUE,
       weight REAL,
@@ -56,9 +64,8 @@ function initSchema(db: Database.Database) {
       creatine INTEGER NOT NULL DEFAULT 0,
       notes TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS food_items (
+    )`,
+    `CREATE TABLE IF NOT EXISTS food_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       log_id INTEGER NOT NULL,
       name TEXT NOT NULL,
@@ -69,9 +76,8 @@ function initSchema(db: Database.Database) {
       carbs REAL,
       fat REAL,
       FOREIGN KEY (log_id) REFERENCES daily_logs(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS exercises (
+    )`,
+    `CREATE TABLE IF NOT EXISTS exercises (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL,
       name TEXT NOT NULL,
@@ -81,9 +87,8 @@ function initSchema(db: Database.Database) {
       order_index INTEGER NOT NULL DEFAULT 0,
       notes TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS workout_logs (
+    )`,
+    `CREATE TABLE IF NOT EXISTS workout_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL,
       date TEXT NOT NULL,
@@ -94,9 +99,8 @@ function initSchema(db: Database.Database) {
       rpe REAL,
       notes TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS fast_walks (
+    )`,
+    `CREATE TABLE IF NOT EXISTS fast_walks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL,
       date TEXT NOT NULL,
@@ -106,9 +110,8 @@ function initSchema(db: Database.Database) {
       speed_kmh REAL,
       notes TEXT,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS whoop_data (
+    )`,
+    `CREATE TABLE IF NOT EXISTS whoop_data (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL UNIQUE,
       recovery_score REAL NOT NULL,
@@ -118,23 +121,10 @@ function initSchema(db: Database.Database) {
       sleep_score REAL,
       strain REAL,
       notes TEXT
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_food_log ON food_items(log_id);
-    CREATE INDEX IF NOT EXISTS idx_ex_session ON exercises(session_id);
-    CREATE INDEX IF NOT EXISTS idx_wl_session_date ON workout_logs(session_id, date);
-    CREATE INDEX IF NOT EXISTS idx_walks_session ON fast_walks(session_id, date);
-  `);
-  migrateFastWalksColumns(db);
-}
-
-function migrateFastWalksColumns(db: Database.Database) {
-  const cols = db.prepare(`PRAGMA table_info(fast_walks)`).all() as { name: string }[];
-  const names = new Set(cols.map((c) => c.name));
-  if (!names.has("incline_percent")) {
-    db.exec(`ALTER TABLE fast_walks ADD COLUMN incline_percent REAL`);
-  }
-  if (!names.has("speed_kmh")) {
-    db.exec(`ALTER TABLE fast_walks ADD COLUMN speed_kmh REAL`);
-  }
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_food_log ON food_items(log_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ex_session ON exercises(session_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_wl_session_date ON workout_logs(session_id, date)`,
+    `CREATE INDEX IF NOT EXISTS idx_walks_session ON fast_walks(session_id, date)`,
+  ], "write");
 }

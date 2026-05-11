@@ -12,10 +12,10 @@ function noDb() {
 }
 
 export async function GET() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return noDb();
-  const rows = db.prepare(`SELECT * FROM whoop_data ORDER BY date DESC`).all() as WhoopRow[];
-  return NextResponse.json({ ok: true, data: rows });
+  const result = await db.execute(`SELECT * FROM whoop_data ORDER BY date DESC`);
+  return NextResponse.json({ ok: true, data: result.rows as unknown as WhoopRow[] });
 }
 
 type Body = {
@@ -30,54 +30,36 @@ type Body = {
 };
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return noDb();
   const body = (await req.json()) as Body;
   if (!body?.date || body.recovery_score == null) {
     return NextResponse.json({ ok: false, error: "date and recovery_score required" }, { status: 400 });
   }
-  const existing = db.prepare(`SELECT id FROM whoop_data WHERE date = ?`).get(body.date) as { id: number } | undefined;
+  const existResult = await db.execute({ sql: `SELECT id FROM whoop_data WHERE date = ?`, args: [body.date] });
+  const existing = existResult.rows[0] as unknown as { id: number } | undefined;
   if (existing) {
-    db.prepare(
-      `UPDATE whoop_data SET recovery_score=?, hrv=?, resting_hr=?, sleep_hours=?, sleep_score=?, strain=?, notes=? WHERE id=?`,
-    ).run(
-      body.recovery_score,
-      body.hrv ?? null,
-      body.resting_hr ?? null,
-      body.sleep_hours ?? null,
-      body.sleep_score ?? null,
-      body.strain ?? null,
-      body.notes ?? null,
-      existing.id,
-    );
-    const row = db.prepare(`SELECT * FROM whoop_data WHERE id = ?`).get(existing.id) as WhoopRow;
-    return NextResponse.json({ ok: true, data: row });
+    await db.execute({
+      sql: `UPDATE whoop_data SET recovery_score=?, hrv=?, resting_hr=?, sleep_hours=?, sleep_score=?, strain=?, notes=? WHERE id=?`,
+      args: [body.recovery_score, body.hrv ?? null, body.resting_hr ?? null, body.sleep_hours ?? null, body.sleep_score ?? null, body.strain ?? null, body.notes ?? null, existing.id],
+    });
+    const result = await db.execute({ sql: `SELECT * FROM whoop_data WHERE id = ?`, args: [existing.id] });
+    return NextResponse.json({ ok: true, data: result.rows[0] as unknown as WhoopRow });
   }
-  const r = db
-    .prepare(
-      `INSERT INTO whoop_data (date, recovery_score, hrv, resting_hr, sleep_hours, sleep_score, strain, notes)
-       VALUES (?,?,?,?,?,?,?,?)`,
-    )
-    .run(
-      body.date,
-      body.recovery_score,
-      body.hrv ?? null,
-      body.resting_hr ?? null,
-      body.sleep_hours ?? null,
-      body.sleep_score ?? null,
-      body.strain ?? null,
-      body.notes ?? null,
-    );
-  const row = db.prepare(`SELECT * FROM whoop_data WHERE id = ?`).get(Number(r.lastInsertRowid)) as WhoopRow;
-  return NextResponse.json({ ok: true, data: row });
+  const r = await db.execute({
+    sql: `INSERT INTO whoop_data (date, recovery_score, hrv, resting_hr, sleep_hours, sleep_score, strain, notes) VALUES (?,?,?,?,?,?,?,?)`,
+    args: [body.date, body.recovery_score, body.hrv ?? null, body.resting_hr ?? null, body.sleep_hours ?? null, body.sleep_score ?? null, body.strain ?? null, body.notes ?? null],
+  });
+  const result = await db.execute({ sql: `SELECT * FROM whoop_data WHERE id = ?`, args: [Number(r.lastInsertRowid)] });
+  return NextResponse.json({ ok: true, data: result.rows[0] as unknown as WhoopRow });
 }
 
 export async function DELETE(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return noDb();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-  db.prepare(`DELETE FROM whoop_data WHERE id = ?`).run(Number(id));
+  await db.execute({ sql: `DELETE FROM whoop_data WHERE id = ?`, args: [Number(id)] });
   return NextResponse.json({ ok: true });
 }
