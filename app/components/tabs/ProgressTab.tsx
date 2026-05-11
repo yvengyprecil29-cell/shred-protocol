@@ -154,23 +154,23 @@ export function ProgressTab() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="font-display text-4xl tracking-[0.08em]">Progress & stats</h1>
-        <p className="text-shred-muted mt-2">Charts from your logs — no fluff.</p>
+        <h1 className="font-display text-4xl tracking-[0.08em]">Progression et stats</h1>
+        <p className="text-shred-muted mt-2">Graphiques à partir de tes saisies.</p>
       </header>
 
       <section className="grid sm:grid-cols-2 gap-3">
         <div className="rounded-shred border border-shred-border bg-shred-surface p-4 border-t-4 border-t-shred-accent">
-          <p className="font-mono text-xs text-shred-muted">Log streak</p>
-          <p className="font-display text-4xl mt-1">{streak} days</p>
+          <p className="font-mono text-xs text-shred-muted">Série de jours saisis</p>
+          <p className="font-display text-4xl mt-1">{streak} jours</p>
         </div>
         <div className="rounded-shred border border-shred-border bg-shred-surface p-4 border-t-4 border-t-shred-accent3">
-          <p className="font-mono text-xs text-shred-muted">Fast walks this month</p>
+          <p className="font-mono text-xs text-shred-muted">Marches rapides ce mois-ci</p>
           <p className="font-display text-4xl mt-1">{walksThisMonth}</p>
         </div>
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4">
-        <h2 className="font-display text-xl mb-3">Weight</h2>
+        <h2 className="font-display text-xl mb-3">Poids</h2>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weightSeries}>
@@ -179,7 +179,7 @@ export function ProgressTab() {
               <YAxis domain={["dataMin - 2", "dataMax + 2"]} tick={{ fill: "#666670", fontSize: 11 }} width={40} />
               <Tooltip
                 contentStyle={{ background: "#111114", border: "1px solid #222228", borderRadius: 12 }}
-                formatter={(v: number) => [`${v} kg`, "Weight"]}
+                formatter={(v: number) => [`${v} kg`, "Poids"]}
               />
               <Line type="monotone" dataKey="kg" stroke="#e8ff3b" strokeWidth={2} dot={{ r: 2 }} />
             </LineChart>
@@ -189,7 +189,7 @@ export function ProgressTab() {
 
       {bfSeries.length ? (
         <section className="rounded-shred border border-shred-border bg-shred-surface p-4">
-          <h2 className="font-display text-xl mb-3">Body fat %</h2>
+          <h2 className="font-display text-xl mb-3">Masse grasse %</h2>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={bfSeries}>
@@ -198,7 +198,7 @@ export function ProgressTab() {
                 <YAxis tick={{ fill: "#666670", fontSize: 11 }} width={36} />
                 <Tooltip
                   contentStyle={{ background: "#111114", border: "1px solid #222228", borderRadius: 12 }}
-                  formatter={(v: number) => [`${v}%`, "Body fat"]}
+                  formatter={(v: number) => [`${v}%`, "Masse grasse"]}
                 />
                 <Line type="monotone" dataKey="bf" stroke="#ff4d4d" strokeWidth={2} dot={{ r: 2 }} />
               </LineChart>
@@ -206,11 +206,13 @@ export function ProgressTab() {
           </div>
         </section>
       ) : (
-        <p className="text-sm text-shred-muted">Log body fat in Daily to unlock body fat chart.</p>
+        <p className="text-sm text-shred-muted">Saisis la masse grasse dans Quotidien pour afficher le graphique.</p>
       )}
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4">
-        <h2 className="font-display text-xl mb-3">Protein compliance by month (≥{PROTEIN_OK_THRESHOLD}g days)</h2>
+        <h2 className="font-display text-xl mb-3">
+          Respect objectif protéines par mois (jours ≥ {PROTEIN_OK_THRESHOLD} g)
+        </h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={proteinCompliance}>
@@ -219,7 +221,7 @@ export function ProgressTab() {
               <YAxis domain={[0, 100]} tick={{ fill: "#666670", fontSize: 11 }} width={32} />
               <Tooltip
                 contentStyle={{ background: "#111114", border: "1px solid #222228", borderRadius: 12 }}
-                formatter={(v: number) => [`${v}%`, "Days hit"]}
+                formatter={(v: number) => [`${v}%`, "Jours atteints"]}
               />
               <Bar dataKey="pct" fill="#3bffd4" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -228,7 +230,7 @@ export function ProgressTab() {
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4">
-        <h2 className="font-display text-xl mb-3">Weekly average calories vs target</h2>
+        <h2 className="font-display text-xl mb-3">Calories moyennes mensuelles vs cible</h2>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weeklyCalories}>
@@ -236,8 +238,8 @@ export function ProgressTab() {
               <XAxis dataKey="label" tick={{ fill: "#666670", fontSize: 10 }} />
               <YAxis tick={{ fill: "#666670", fontSize: 11 }} width={44} />
               <Tooltip contentStyle={{ background: "#111114", border: "1px solid #222228", borderRadius: 12 }} />
-              <Line type="monotone" dataKey="avg" name="Avg kcal" stroke="#e8ff3b" strokeWidth={2} dot />
-              <Line type="monotone" dataKey="targetAvg" name="Target avg" stroke="#666670" strokeDasharray="4 4" />
+              <Line type="monotone" dataKey="avg" name="Moy. kcal" stroke="#e8ff3b" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="targetAvg" name="Cible moy." stroke="#666670" strokeDasharray="4 4" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -245,13 +247,13 @@ export function ProgressTab() {
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-display text-xl">Progressive overload</h2>
+          <h2 className="font-display text-xl">Surcharge progressive</h2>
           <select
             value={pickExercise}
             onChange={(e) => setPickExercise(e.target.value)}
             className="rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2 text-sm"
           >
-            {exerciseNames.length === 0 ? <option value="">No data</option> : null}
+            {exerciseNames.length === 0 ? <option value="">Aucune donnée</option> : null}
             {exerciseNames.map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -276,12 +278,12 @@ export function ProgressTab() {
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface overflow-x-auto">
-        <h2 className="font-display text-xl p-4 pb-0">Personal records (best weight)</h2>
+        <h2 className="font-display text-xl p-4 pb-0">Records personnels (meilleure charge)</h2>
         <table className="min-w-full text-left text-sm mt-2">
           <thead className="bg-shred-surface2 font-mono text-xs uppercase text-shred-muted">
             <tr>
-              <th className="px-3 py-2">Exercise</th>
-              <th className="px-3 py-2">Best kg</th>
+              <th className="px-3 py-2">Exercice</th>
+              <th className="px-3 py-2">Max (kg)</th>
             </tr>
           </thead>
           <tbody>

@@ -18,7 +18,7 @@ function statusFor(log: DailyLog): { label: string; ok: boolean } {
   const p = log.protein ?? 0;
   const c = log.calories ?? 0;
   const ok = p >= PROTEIN_OK_THRESHOLD && (log.calories == null || c <= t);
-  return ok ? { label: "✓ OK", ok: true } : { label: "⚠ Review", ok: false };
+  return ok ? { label: "✓ OK", ok: true } : { label: "⚠ À revoir", ok: false };
 }
 
 export function TrackingTab() {
@@ -124,7 +124,7 @@ export function TrackingTab() {
     const j = await res.json();
     if (res.ok && j.ok) {
       await load();
-      setMsg("Saved");
+      setMsg("Enregistré");
       return;
     }
 
@@ -165,7 +165,7 @@ export function TrackingTab() {
     const next = [row, ...all.filter((x) => x.date !== date)];
     localStore.setDailyLogs(next);
     await load();
-    setMsg("Saved locally");
+    setMsg("Enregistré en local");
   }
 
   const sorted = useMemo(() => [...logs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [logs]);
@@ -173,13 +173,13 @@ export function TrackingTab() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="font-display text-4xl tracking-[0.08em]">Daily tracking</h1>
-        <p className="text-shred-muted mt-2">Food + weight log. One entry per calendar day.</p>
+        <h1 className="font-display text-4xl tracking-[0.08em]">Suivi quotidien</h1>
+        <p className="text-shred-muted mt-2">Alimentation et poids. Une entrée par jour calendaire.</p>
       </header>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-2xl tracking-wide">Daily entry</h2>
+          <h2 className="font-display text-2xl tracking-wide">Saisie du jour</h2>
           <div
             className={`text-xs font-mono px-2 py-1 rounded-shred border ${
               proteinOk && !calHigh
@@ -187,10 +187,10 @@ export function TrackingTab() {
                 : "border-shred-accent2 text-shred-accent2"
             }`}
           >
-            Totals (manual + foods): {Math.round(runningTotals.calories)} kcal · P {Math.round(runningTotals.protein)}g
-            · C {Math.round(runningTotals.carbs)}g · F {Math.round(runningTotals.fat)}g
-            {!proteinOk ? " · protein under 200g" : null}
-            {calHigh ? " · calories over target" : null}
+            Totaux (manuel + aliments) : {Math.round(runningTotals.calories)} kcal · P {Math.round(runningTotals.protein)}{" "}
+            g · G {Math.round(runningTotals.carbs)} g · L {Math.round(runningTotals.fat)} g
+            {!proteinOk ? " · protéines sous 200 g" : null}
+            {calHigh ? " · calories au-dessus de la cible" : null}
           </div>
         </div>
 
@@ -205,7 +205,7 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Body weight (kg)
+            Poids corporel (kg)
             <input
               type="number"
               step="0.1"
@@ -215,7 +215,7 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Body fat % (optional)
+            Masse grasse % (optionnel)
             <input
               type="number"
               step="0.1"
@@ -225,24 +225,24 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Day type
+            Type de jour
             <select
               value={dayType}
               onChange={(e) => setDayType(e.target.value as "training" | "rest")}
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
             >
-              <option value="training">Training day</option>
-              <option value="rest">Rest day</option>
+              <option value="training">Jour d&apos;entraînement</option>
+              <option value="rest">Jour de repos</option>
             </select>
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Session done today
+            Séance faite aujourd&apos;hui
             <select
               value={sessionId === "" ? "" : String(sessionId)}
               onChange={(e) => setSessionId(e.target.value ? Number(e.target.value) : "")}
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
             >
-              <option value="">None</option>
+              <option value="">Aucune</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -251,7 +251,7 @@ export function TrackingTab() {
             </select>
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Water (L)
+            Eau (L)
             <input
               type="number"
               step="0.1"
@@ -261,7 +261,7 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Calories consumed
+            Calories consommées
             <input
               type="number"
               value={calories}
@@ -270,7 +270,7 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Protein (g)
+            Protéines (g)
             <input
               type="number"
               value={protein}
@@ -279,7 +279,7 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Carbs (g)
+            Glucides (g)
             <input
               type="number"
               value={carbs}
@@ -288,7 +288,7 @@ export function TrackingTab() {
             />
           </label>
           <label className="text-xs font-mono text-shred-muted block">
-            Fat (g)
+            Lipides (g)
             <input
               type="number"
               value={fat}
@@ -297,7 +297,7 @@ export function TrackingTab() {
             />
           </label>
           <div className="flex items-center gap-3 pt-5">
-            <span className="text-xs font-mono text-shred-muted">Creatine taken</span>
+            <span className="text-xs font-mono text-shred-muted">Créatine prise</span>
             <button
               type="button"
               onClick={() => setCreatine((c) => !c)}
@@ -305,7 +305,7 @@ export function TrackingTab() {
                 creatine ? "border-shred-accent3 bg-shred-accent3/20 text-shred-accent3" : "border-shred-border text-shred-muted"
               }`}
             >
-              {creatine ? "Yes" : "No"}
+              {creatine ? "Oui" : "Non"}
             </button>
           </div>
           <label className="sm:col-span-2 lg:col-span-3 text-xs font-mono text-shred-muted block">
@@ -323,16 +323,16 @@ export function TrackingTab() {
           onClick={() => setShowFood((s) => !s)}
           className="rounded-shred border border-shred-border px-3 py-2 font-mono text-xs text-shred-muted"
         >
-          {showFood ? "Hide food detail" : "Food detail tracker (optional)"}
+          {showFood ? "Masquer le détail aliments" : "Détail par aliment (optionnel)"}
         </button>
 
         {showFood ? (
           <div className="space-y-3 border-t border-shred-border pt-4">
-            <h3 className="font-display text-lg">Food items</h3>
+            <h3 className="font-display text-lg">Aliments</h3>
             {foods.map((f, idx) => (
               <div key={idx} className="grid md:grid-cols-6 gap-2 items-end">
                 <label className="text-xs font-mono text-shred-muted md:col-span-2 block">
-                  Name
+                  Nom
                   <input
                     value={f.name}
                     onChange={(e) =>
@@ -342,7 +342,7 @@ export function TrackingTab() {
                   />
                 </label>
                 <label className="text-xs font-mono text-shred-muted block">
-                  Qty
+                  Qté
                   <input
                     value={f.quantity}
                     onChange={(e) =>
@@ -352,7 +352,7 @@ export function TrackingTab() {
                   />
                 </label>
                 <label className="text-xs font-mono text-shred-muted block">
-                  Unit
+                  Unité
                   <input
                     value={f.unit}
                     onChange={(e) =>
@@ -373,7 +373,7 @@ export function TrackingTab() {
                   />
                 </label>
                 <label className="text-xs font-mono text-shred-muted block">
-                  P / C / F
+                  P / G / L
                   <div className="mt-1 flex gap-1">
                     <input
                       value={f.protein}
@@ -403,7 +403,7 @@ export function TrackingTab() {
                   onClick={() => setFoods((arr) => arr.filter((_, i) => i !== idx))}
                   className="rounded-shred border border-shred-accent2 text-shred-accent2 px-2 py-1 text-xs h-9 self-end"
                 >
-                  Remove
+                  Retirer
                 </button>
               </div>
             ))}
@@ -414,7 +414,7 @@ export function TrackingTab() {
               }
               className="rounded-shred border border-shred-border px-3 py-2 font-mono text-xs"
             >
-              + Food row
+              + Ligne aliment
             </button>
           </div>
         ) : null}
@@ -424,7 +424,7 @@ export function TrackingTab() {
           onClick={() => void saveEntry()}
           className="rounded-shred border border-shred-accent bg-shred-accent px-5 py-2 font-mono text-sm text-shred-bg"
         >
-          Save daily log
+          Enregistrer la journée
         </button>
         {msg ? <p className="font-mono text-sm text-shred-accent3">{msg}</p> : null}
       </section>
@@ -434,13 +434,13 @@ export function TrackingTab() {
           <thead className="bg-shred-surface2 font-mono text-xs uppercase text-shred-muted">
             <tr>
               <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2">Weight</th>
+              <th className="px-3 py-2">Poids</th>
               <th className="px-3 py-2">Calories</th>
-              <th className="px-3 py-2">Protein</th>
-              <th className="px-3 py-2">Carbs</th>
-              <th className="px-3 py-2">Fat</th>
-              <th className="px-3 py-2">Session</th>
-              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Prot.</th>
+              <th className="px-3 py-2">Gluc.</th>
+              <th className="px-3 py-2">Lip.</th>
+              <th className="px-3 py-2">Séance</th>
+              <th className="px-3 py-2">Statut</th>
             </tr>
           </thead>
           <tbody>

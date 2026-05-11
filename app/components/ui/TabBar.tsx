@@ -1,12 +1,12 @@
 "use client";
 
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "diet", label: "Diet" },
-  { id: "training", label: "Training" },
-  { id: "tracking", label: "Daily" },
+  { id: "overview", label: "Aperçu" },
+  { id: "diet", label: "Régime" },
+  { id: "training", label: "Entraînement" },
+  { id: "tracking", label: "Quotidien" },
   { id: "whoop", label: "WHOOP" },
-  { id: "progress", label: "Progress" },
+  { id: "progress", label: "Progression" },
 ] as const;
 
 export type TabId = (typeof TABS)[number]["id"];

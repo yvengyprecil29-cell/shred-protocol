@@ -9,7 +9,7 @@ export const USER = {
   goalBodyFatPctHigh: 13,
   goalEndDate: "2026-08-31",
   trainingDaysPerWeek: 5,
-  supplementNote: "Creatine 5g/day post-workout only",
+  supplementNote: "Créatine 5 g/jour, uniquement après l'entraînement",
 } as const;
 
 export const PROGRAM_WEEKS = 11;
@@ -33,12 +33,21 @@ export const PROTEIN_OK_THRESHOLD = 200;
 export const SESSION_TYPES = ["PUSH", "PULL", "LEGS", "CARDIO", "OTHER"] as const;
 export type SessionType = (typeof SESSION_TYPES)[number];
 
+/** Libellés UI (les valeurs en base restent en anglais) */
+export const SESSION_TYPE_LABELS: Record<SessionType, string> = {
+  PUSH: "Poussée",
+  PULL: "Tirage",
+  LEGS: "Jambes",
+  CARDIO: "Cardio",
+  OTHER: "Autre",
+};
+
 export const WEEKLY_SPLIT = [
-  { day: "Monday", label: "PUSH A", detail: "Chest · Shoulders · Triceps" },
-  { day: "Tuesday", label: "PULL A", detail: "Back · Biceps" },
-  { day: "Wednesday", label: "LEGS", detail: "Quads · Hamstrings · Calves" },
-  { day: "Thursday", label: "PUSH B", detail: "Shoulders · Triceps · Chest" },
-  { day: "Friday", label: "PULL B", detail: "Back · Biceps · Rear delts" },
-  { day: "Saturday", label: "REST", detail: "Recovery" },
-  { day: "Sunday", label: "REST", detail: "Recovery" },
+  { day: "Lundi", label: "PUSH A", detail: "Pectoraux · Épaules · Triceps" },
+  { day: "Mardi", label: "PULL A", detail: "Dos · Biceps" },
+  { day: "Mercredi", label: "LEGS", detail: "Quadriceps · Ischio-jambiers · Mollets" },
+  { day: "Jeudi", label: "PUSH B", detail: "Épaules · Triceps · Pectoraux" },
+  { day: "Vendredi", label: "PULL B", detail: "Dos · Biceps · Deltoïdes postérieurs" },
+  { day: "Samedi", label: "REPOS", detail: "Récupération" },
+  { day: "Dimanche", label: "REPOS", detail: "Récupération" },
 ] as const;

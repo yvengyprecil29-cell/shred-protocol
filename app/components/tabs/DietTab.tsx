@@ -4,80 +4,80 @@ export function DietTab() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-4xl tracking-[0.08em]">Diet plan</h1>
+        <h1 className="font-display text-4xl tracking-[0.08em]">Plan alimentaire</h1>
         <p className="text-shred-muted mt-2 max-w-3xl">
-          Reference meals for {USER.name}. Numbers are targets, not tracked here — log intake in{" "}
-          <span className="text-shred-accent3">Daily</span>.
+          Repères pour {USER.name}. Les chiffres sont des cibles, pas suivis ici — enregistre tes apports dans{" "}
+          <span className="text-shred-accent3">Quotidien</span>.
         </p>
       </header>
 
       <div className="flex flex-wrap gap-2">
         <span className="rounded-shred border border-t-4 border-t-shred-accent border-shred-border bg-shred-surface px-3 py-2 font-mono text-xs text-shred-text">
-          Training day: 2,250 kcal · 150g carbs
+          Jour d&apos;entraînement : 2 250 kcal · 150 g glucides
         </span>
         <span className="rounded-shred border border-t-4 border-t-shred-accent3 border-shred-border bg-shred-surface px-3 py-2 font-mono text-xs text-shred-text">
-          Rest day: 2,100 kcal · 100g carbs
+          Jour de repos : 2 100 kcal · 100 g glucides
         </span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <MealCard
-          title="Meal 1 — Wake up (7–8am)"
+          title="Repas 1 — Réveil (7h–8h)"
           border="accent3"
           lines={[
-            "4 whole eggs + 4 whites",
-            "Avocado 80g",
-            "Fromage blanc 0% 200g",
-            "Oatmeal 50g — training days only",
-            "~600–790 kcal · ~55g protein",
+            "4 œufs entiers + 4 blancs",
+            "Avocat 80 g",
+            "Fromage blanc 0 % 200 g",
+            "Flocons d'avoine 50 g — jours d'entraînement uniquement",
+            "~600–790 kcal · ~55 g protéines",
           ]}
         />
         <MealCard
-          title="Pre-workout (~1h30 before, training only)"
+          title="Pré-entraînement (~1h30 avant, entraînement uniquement)"
           border="accent"
           lines={[
-            "Chicken / tuna / turkey 180g",
-            "White rice or sweet potato 150g cooked (~50g carbs)",
-            "Green vegetables",
-            "~435 kcal · ~45g protein · ~50g carbs",
+            "Poulet / thon / dinde 180 g",
+            "Riz blanc ou patate douce 150 g cuits (~50 g glucides)",
+            "Légumes verts",
+            "~435 kcal · ~45 g protéines · ~50 g glucides",
           ]}
         />
         <MealCard
-          title="Post-workout (+30min, training only)"
+          title="Post-entraînement (+30 min, entraînement uniquement)"
           border="accent2"
           lines={[
-            "Skyr or fromage blanc 0% 300g",
-            "Banana or rice (~30g carbs)",
-            "Creatine 5g with water",
-            "~275 kcal · ~35g protein · ~30g carbs",
+            "Skyr ou fromage blanc 0 % 300 g",
+            "Banane ou riz (~30 g glucides)",
+            "Créatine 5 g avec de l'eau",
+            "~275 kcal · ~35 g protéines · ~30 g glucides",
           ]}
         />
         <MealCard
-          title="Dinner (7–8pm, daily)"
+          title="Dîner (19h–20h, tous les jours)"
           border="muted"
           lines={[
-            "Salmon / mackerel / beef 5% fat 200g",
-            "Green vegetables — unlimited",
-            "Olive oil 15g",
-            "Lentils 80g cooked — rest days only",
-            "~500–590 kcal · ~50g protein · near-zero carbs",
+            "Saumon / maquereau / bœuf 5 % MG 200 g",
+            "Légumes verts — à volonté",
+            "Huile d'olive 15 g",
+            "Lentilles 80 g cuites — jours de repos uniquement",
+            "~500–590 kcal · ~50 g protéines · quasi pas de glucides",
           ]}
         />
       </div>
 
       <div className="rounded-shred border border-shred-border border-t-4 border-t-shred-accent bg-shred-surface2 p-5">
-        <h2 className="font-display text-2xl tracking-wide text-shred-text">Creatine · Hydration · Refeed</h2>
+        <h2 className="font-display text-2xl tracking-wide text-shred-text">Créatine · Hydratation · Refeed</h2>
         <ul className="mt-3 space-y-2 text-sm text-shred-muted list-disc pl-5">
           <li>
-            <span className="text-shred-text">Creatine:</span> {USER.supplementNote}
+            <span className="text-shred-text">Créatine :</span> {USER.supplementNote}
           </li>
           <li>
-            <span className="text-shred-text">Hydration:</span> track water in Daily; aim consistent intake
-            especially training days.
+            <span className="text-shred-text">Hydratation :</span> note l&apos;eau dans Quotidien ; viser une prise
+            régulière, surtout les jours d&apos;entraînement.
           </li>
           <li>
-            <span className="text-shred-text">Refeed:</span> if WHOOP recovery stays low multiple days, add ~50g
-            carbs at dinner once — see WHOOP tab alert.
+            <span className="text-shred-text">Refeed :</span> si la récupération WHOOP reste basse plusieurs jours,
+            ajoute ~50 g de glucides au dîner une fois — voir l&apos;alerte dans l&apos;onglet WHOOP.
           </li>
         </ul>
       </div>

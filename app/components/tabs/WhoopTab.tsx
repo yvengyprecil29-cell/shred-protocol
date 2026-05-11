@@ -18,21 +18,21 @@ function coachingCard(score: number) {
   if (score >= 67) {
     return {
       tone: "green" as const,
-      title: "✅ Full session",
-      body: "Train at full intensity. Progressive overload if reps are there. Target strain: 14–16.",
+      title: "✅ Séance complète",
+      body: "Entraîne-toi à pleine intensité. Surcharge progressive si les reps suivent. Strain cible : 14–16.",
     };
   }
   if (score >= 34) {
     return {
       tone: "yellow" as const,
-      title: "⚡ Normal session, no PRs",
-      body: "Same weights, focus on form. Reduce by 1 set if needed. Hydrate ++.",
+      title: "⚡ Séance normale, pas de records",
+      body: "Mêmes charges, focus sur la technique. Retire 1 série si besoin. Hydratation ++.",
     };
   }
   return {
     tone: "red" as const,
-    title: "🔴 Active recovery only",
-    body: "20–30 min fast walk. No heavy lifting today. Priority: sleep, food, hydration.",
+    title: "🔴 Récupération active seulement",
+    body: "Marche rapide 20–30 min. Pas de charges lourdes aujourd'hui. Priorité : sommeil, alimentation, eau.",
   };
 }
 
@@ -80,8 +80,12 @@ export function WhoopTab() {
     });
     if (!wk.length) return { recovery: 0, hrv: 0, sleep: 0 };
     const recovery = wk.reduce((s, x) => s + x.recovery_score, 0) / wk.length;
-    const hrv = wk.filter((x) => x.hrv != null).reduce((s, x) => s + (x.hrv as number), 0) / Math.max(1, wk.filter((x) => x.hrv != null).length);
-    const sleep = wk.filter((x) => x.sleep_hours != null).reduce((s, x) => s + (x.sleep_hours as number), 0) / Math.max(1, wk.filter((x) => x.sleep_hours != null).length);
+    const hrv =
+      wk.filter((x) => x.hrv != null).reduce((s, x) => s + (x.hrv as number), 0) /
+      Math.max(1, wk.filter((x) => x.hrv != null).length);
+    const sleep =
+      wk.filter((x) => x.sleep_hours != null).reduce((s, x) => s + (x.sleep_hours as number), 0) /
+      Math.max(1, wk.filter((x) => x.sleep_hours != null).length);
     return { recovery, hrv, sleep };
   }, [sorted]);
 
@@ -114,7 +118,7 @@ export function WhoopTab() {
     const j = await res.json();
     if (res.ok && j.ok) {
       await load();
-      setMsg("WHOOP entry saved");
+      setMsg("Entrée WHOOP enregistrée");
       return;
     }
     const all = localStore.getWhoop() as WhoopRow[];
@@ -132,7 +136,7 @@ export function WhoopTab() {
     };
     localStore.setWhoop([row, ...all.filter((x) => x.date !== date)]);
     await load();
-    setMsg("Saved locally");
+    setMsg("Enregistré en local");
   }
 
   const coach = coachingCard(Number(recovery) || 0);
@@ -147,12 +151,12 @@ export function WhoopTab() {
     <div className="space-y-8">
       <header>
         <h1 className="font-display text-4xl tracking-[0.08em]">WHOOP + coaching</h1>
-        <p className="text-shred-muted mt-2">Manual morning capture — recovery drives today&apos;s plan.</p>
+        <p className="text-shred-muted mt-2">Saisie manuelle le matin — la récupération pilote le plan du jour.</p>
       </header>
 
       <section className="grid lg:grid-cols-2 gap-4">
         <div className="rounded-shred border border-shred-border bg-shred-surface p-4 space-y-3">
-          <h2 className="font-display text-2xl tracking-wide">Daily WHOOP entry</h2>
+          <h2 className="font-display text-2xl tracking-wide">Saisie WHOOP du jour</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="text-xs font-mono text-shred-muted block">
               Date
@@ -164,7 +168,7 @@ export function WhoopTab() {
               />
             </label>
             <label className="text-xs font-mono text-shred-muted block">
-              Recovery %
+              Récupération %
               <input
                 type="number"
                 value={recovery}
@@ -173,7 +177,7 @@ export function WhoopTab() {
               />
             </label>
             <label className="text-xs font-mono text-shred-muted block">
-              HRV (ms)
+              VFC (ms)
               <input
                 type="number"
                 value={hrv}
@@ -182,7 +186,7 @@ export function WhoopTab() {
               />
             </label>
             <label className="text-xs font-mono text-shred-muted block">
-              Resting HR (bpm)
+              FC repos (bpm)
               <input
                 type="number"
                 value={rhr}
@@ -191,7 +195,7 @@ export function WhoopTab() {
               />
             </label>
             <label className="text-xs font-mono text-shred-muted block">
-              Sleep (hours)
+              Sommeil (heures)
               <input
                 type="number"
                 step="0.1"
@@ -201,7 +205,7 @@ export function WhoopTab() {
               />
             </label>
             <label className="text-xs font-mono text-shred-muted block">
-              Sleep quality %
+              Qualité du sommeil %
               <input
                 type="number"
                 value={sleepScore}
@@ -210,7 +214,7 @@ export function WhoopTab() {
               />
             </label>
             <label className="text-xs font-mono text-shred-muted block">
-              Strain prev day (0–21)
+              Strain veille (0–21)
               <input
                 type="number"
                 step="0.1"
@@ -233,7 +237,7 @@ export function WhoopTab() {
             onClick={() => void saveWhoop()}
             className="rounded-shred border border-shred-accent bg-shred-accent px-4 py-2 font-mono text-sm text-shred-bg"
           >
-            Save WHOOP row
+            Enregistrer
           </button>
           {msg ? <p className="font-mono text-xs text-shred-accent3">{msg}</p> : null}
         </div>
@@ -242,19 +246,20 @@ export function WhoopTab() {
           <h3 className="font-display text-2xl tracking-wide">{coach.title}</h3>
           <p className="text-sm text-shred-muted mt-3 leading-relaxed">{coach.body}</p>
           <p className="mt-4 font-mono text-xs text-shred-muted">
-            Preview uses recovery field above ({recovery}%) before save — saved rows drive history charts.
+            Aperçu basé sur la récupération saisie ci-dessus ({recovery}%) avant enregistrement — l&apos;historique
+            alimente les graphiques.
           </p>
         </div>
       </section>
 
       {refeedAlert ? (
         <div className="rounded-shred border border-shred-accent2 bg-shred-surface p-4 border-t-4 border-t-shred-accent2 font-mono text-sm text-shred-accent2">
-          ⚠ Consider a carb refeed tonight (+50g carbs) — recovery under 40% two days in a row.
+          ⚠ Envisage un refeed glucides ce soir (+50 g) — récupération sous 40 % deux jours d&apos;affilée.
         </div>
       ) : null}
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4">
-        <h2 className="font-display text-xl mb-2">HRV — last 7 days</h2>
+        <h2 className="font-display text-xl mb-2">VFC — 7 derniers jours</h2>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={last7}>
@@ -274,23 +279,23 @@ export function WhoopTab() {
           </ResponsiveContainer>
         </div>
         <p className="text-xs text-shred-muted mt-2 font-mono">
-          Avg sleep this rolling week: {weekAvg.sleep ? weekAvg.sleep.toFixed(1) : "—"} h
+          Sommeil moyen (7 jours glissants) : {weekAvg.sleep ? weekAvg.sleep.toFixed(1) : "—"} h
         </p>
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface2 p-4">
-        <h2 className="font-display text-xl mb-2">Weekly summary (last 7 days of data)</h2>
+        <h2 className="font-display text-xl mb-2">Résumé hebdomadaire (7 derniers jours de données)</h2>
         <div className="grid sm:grid-cols-3 gap-3 font-mono text-sm">
           <div className="rounded-shred border border-shred-border p-3 bg-shred-surface">
-            <p className="text-shred-muted text-xs">Avg recovery</p>
+            <p className="text-shred-muted text-xs">Récup. moy.</p>
             <p className="text-2xl text-shred-accent3 mt-1">{weekAvg.recovery ? weekAvg.recovery.toFixed(0) : "—"}%</p>
           </div>
           <div className="rounded-shred border border-shred-border p-3 bg-shred-surface">
-            <p className="text-shred-muted text-xs">Avg HRV</p>
+            <p className="text-shred-muted text-xs">VFC moy.</p>
             <p className="text-2xl text-shred-accent mt-1">{weekAvg.hrv ? weekAvg.hrv.toFixed(0) : "—"} ms</p>
           </div>
           <div className="rounded-shred border border-shred-border p-3 bg-shred-surface">
-            <p className="text-shred-muted text-xs">Avg sleep</p>
+            <p className="text-shred-muted text-xs">Sommeil moy.</p>
             <p className="text-2xl text-shred-text mt-1">{weekAvg.sleep ? weekAvg.sleep.toFixed(1) : "—"} h</p>
           </div>
         </div>
@@ -301,11 +306,11 @@ export function WhoopTab() {
           <thead className="bg-shred-surface2 font-mono text-xs uppercase text-shred-muted">
             <tr>
               <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2">Recovery</th>
-              <th className="px-3 py-2">HRV</th>
-              <th className="px-3 py-2">RHR</th>
-              <th className="px-3 py-2">Sleep h</th>
-              <th className="px-3 py-2">Sleep %</th>
+              <th className="px-3 py-2">Récup.</th>
+              <th className="px-3 py-2">VFC</th>
+              <th className="px-3 py-2">FC repos</th>
+              <th className="px-3 py-2">Sommeil h</th>
+              <th className="px-3 py-2">Sommeil %</th>
               <th className="px-3 py-2">Strain</th>
             </tr>
           </thead>

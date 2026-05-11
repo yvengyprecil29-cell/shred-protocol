@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { SESSION_TYPES, WEEKLY_SPLIT } from "@/lib/constants";
+import { SESSION_TYPE_LABELS, SESSION_TYPES, WEEKLY_SPLIT } from "@/lib/constants";
 import type { ExerciseRow, FastWalkRow, SessionRow, WorkoutLogRow } from "@/lib/types";
 import { isoWeekKey } from "@/lib/dates";
 import { localStore, nextLocalId } from "@/lib/localStore";
@@ -112,7 +112,7 @@ export function TrainingTab() {
   async function createSession(asTemplate: boolean) {
     setMsg(null);
     if (!newName.trim()) {
-      setMsg("Session name required");
+      setMsg("Nom de séance requis");
       return;
     }
     const body = {
@@ -134,7 +134,7 @@ export function TrainingTab() {
       setNewName("");
       setNewDate("");
       setNewNotes("");
-      setMsg("Session created");
+      setMsg("Séance créée");
       return;
     }
     const id = nextLocalId(sessions);
@@ -151,7 +151,7 @@ export function TrainingTab() {
     setNewName("");
     setNewDate("");
     setNewNotes("");
-    setMsg("Saved locally (database offline)");
+    setMsg("Enregistré en local (base indisponible)");
   }
 
   function beginEdit(s: SessionWithEx) {
@@ -193,7 +193,7 @@ export function TrainingTab() {
     const j = await res.json();
     if (res.ok && j.ok) {
       setSessions((prev) => prev.map((s) => (s.id === editId ? (j.data as SessionWithEx) : s)));
-      setMsg("Session saved");
+      setMsg("Séance enregistrée");
       cancelEdit();
       return;
     }
@@ -214,7 +214,7 @@ export function TrainingTab() {
       };
     });
     persistLocalSessions(next);
-    setMsg("Saved locally");
+    setMsg("Enregistré en local");
     cancelEdit();
   }
 
@@ -264,16 +264,16 @@ export function TrainingTab() {
     const j = await res.json();
     if (res.ok && j.ok) {
       setSessions((prev) => prev.map((x) => (x.id === s.id ? (j.data as SessionWithEx) : x)));
-      setMsg("Saved as template");
+      setMsg("Enregistré comme modèle");
       return;
     }
     const next = sessions.map((x) => (x.id === s.id ? { ...x, template: 1 } : x));
     persistLocalSessions(next);
-    setMsg("Template flag saved locally");
+    setMsg("Modèle enregistré en local");
   }
 
   async function deleteSession(id: number) {
-    if (!confirm("Delete this session and its exercises?")) return;
+    if (!confirm("Supprimer cette séance et ses exercices ?")) return;
     const res = await fetch(`/api/sessions?id=${id}`, { method: "DELETE" });
     const j = await res.json();
     if (res.ok && j.ok) {
@@ -359,22 +359,22 @@ export function TrainingTab() {
     });
     const dates = [...byDate.keys()].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
     const prevDate = dates.find((d) => d !== logDate);
-    if (!prevDate) return "First log for this lift pattern";
+    if (!prevDate) return "Premier enregistrement pour ce schéma";
     const prevMax = Math.max(
       ...byDate.get(prevDate)!.filter((x) => x.exercise_name === ex.name).map((x) => x.weight_kg),
       0,
     );
-    if (!prevMax) return "No prior weight";
+    if (!prevMax) return "Pas de charge précédente";
     const diff = Math.round((weight - prevMax) * 10) / 10;
-    if (diff > 0) return `↑ +${diff}kg vs last session`;
-    if (diff < 0) return "↓ Reduced weight vs last session";
-    return "= Same weight";
+    if (diff > 0) return `↑ +${diff} kg vs dernière séance`;
+    if (diff < 0) return "↓ Charge réduite vs dernière séance";
+    return "= Même charge";
   }
 
   async function submitWorkout() {
     setMsg(null);
     if (!selectedSession || logSessionId === "") {
-      setMsg("Pick a session");
+      setMsg("Choisis une séance");
       return;
     }
     const rows: {
@@ -389,7 +389,7 @@ export function TrainingTab() {
       const f = logFields[ex.id];
       const w = Number(f?.weight);
       if (!f || Number.isNaN(w)) {
-        setMsg(`Weight required for ${ex.name}`);
+        setMsg(`Charge requise pour ${ex.name}`);
         return;
       }
       const repsList = parseRepsList(f.reps || "0", ex.sets);
@@ -412,7 +412,7 @@ export function TrainingTab() {
     });
     const j = await res.json();
     if (res.ok && j.ok) {
-      setMsg("Workout logged");
+      setMsg("Séance enregistrée");
       return;
     }
     const existing = (localStore.getWorkoutLogs() as WorkoutLogRow[]).filter(
@@ -425,17 +425,17 @@ export function TrainingTab() {
       ...row,
     }));
     localStore.setWorkoutLogs([...stamped, ...existing]);
-    setMsg("Workout saved locally");
+    setMsg("Séance enregistrée en local");
   }
 
   async function submitWalk() {
     if (logSessionId === "") {
-      setMsg("Pick a session for the walk link");
+      setMsg("Choisis une séance pour lier la marche");
       return;
     }
     const dur = Number(walkDur);
     if (Number.isNaN(dur) || dur <= 0) {
-      setMsg("Walk duration invalid");
+      setMsg("Durée de marche invalide");
       return;
     }
     const res = await fetch("/api/walks", {
@@ -478,17 +478,17 @@ export function TrainingTab() {
   return (
     <div className="space-y-10">
       <header>
-        <h1 className="font-display text-4xl tracking-[0.08em]">Training</h1>
+        <h1 className="font-display text-4xl tracking-[0.08em]">Entraînement</h1>
         <p className="text-shred-muted mt-2">
-          Weekly split · custom sessions · progressive overload · post-workout walks
+          Split hebdo · séances perso · surcharge progressive · marches post-séance
           {useLocal ? (
-            <span className="ml-2 text-shred-accent font-mono text-xs">LOCAL MODE</span>
+            <span className="ml-2 text-shred-accent font-mono text-xs">MODE LOCAL</span>
           ) : null}
         </p>
       </header>
 
       <section>
-        <h2 className="font-display text-2xl tracking-wide mb-3">Weekly split</h2>
+        <h2 className="font-display text-2xl tracking-wide mb-3">Répartition hebdomadaire</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {WEEKLY_SPLIT.map((d) => (
             <div
@@ -505,11 +505,11 @@ export function TrainingTab() {
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h2 className="font-display text-2xl tracking-wide">Custom sessions</h2>
+          <h2 className="font-display text-2xl tracking-wide">Séances personnalisées</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="block text-xs font-mono text-shred-muted">
-            Session name
+            Nom de la séance
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -525,17 +525,17 @@ export function TrainingTab() {
             >
               {SESSION_TYPES.map((t) => (
                 <option key={t} value={t}>
-                  {t}
+                  {SESSION_TYPE_LABELS[t]}
                 </option>
               ))}
             </select>
           </label>
           <label className="block text-xs font-mono text-shred-muted">
-            Day / date note
+            Jour / note date
             <input
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
-              placeholder="e.g. Monday or 2026-05-12"
+              placeholder="ex. Lundi ou 2026-05-12"
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2 text-shred-text"
             />
           </label>
@@ -554,14 +554,14 @@ export function TrainingTab() {
             onClick={() => void createSession(false)}
             className="rounded-shred border border-shred-accent bg-shred-accent px-4 py-2 font-mono text-sm text-shred-bg"
           >
-            + New session
+            + Nouvelle séance
           </button>
           <button
             type="button"
             onClick={() => void createSession(true)}
             className="rounded-shred border border-shred-border bg-shred-surface2 px-4 py-2 font-mono text-sm text-shred-text"
           >
-            + New template
+            + Nouveau modèle
           </button>
         </div>
 
@@ -574,7 +574,7 @@ export function TrainingTab() {
                   <p className="font-mono text-xs text-shred-muted mt-1">
                     {s.type}
                     {s.date ? ` · ${s.date}` : ""}
-                    {s.template ? " · TEMPLATE" : ""}
+                    {s.template ? " · MODÈLE" : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -583,21 +583,21 @@ export function TrainingTab() {
                     onClick={() => beginEdit(s)}
                     className="rounded-shred border border-shred-border px-3 py-1 text-xs font-mono text-shred-text"
                   >
-                    Edit exercises
+                    Modifier exercices
                   </button>
                   <button
                     type="button"
                     onClick={() => void markAsTemplate(s)}
                     className="rounded-shred border border-shred-accent px-3 py-1 text-xs font-mono text-shred-accent"
                   >
-                    Save as template
+                    Enregistrer comme modèle
                   </button>
                   <button
                     type="button"
                     onClick={() => void deleteSession(s.id)}
                     className="rounded-shred border border-shred-accent2 px-3 py-1 text-xs font-mono text-shred-accent2"
                   >
-                    Delete
+                    Supprimer
                   </button>
                 </div>
               </div>
@@ -605,12 +605,12 @@ export function TrainingTab() {
                 <ul className="mt-2 text-sm text-shred-muted list-disc pl-5 space-y-1">
                   {s.exercises.map((e) => (
                     <li key={e.id}>
-                      {e.name} — {e.sets}×{e.reps_target} · {e.rest_seconds}s rest
+                      {e.name} — {e.sets}×{e.reps_target} · {e.rest_seconds}s repos
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-shred-muted mt-2">No exercises yet — edit to add.</p>
+                <p className="text-xs text-shred-muted mt-2">Aucun exercice — modifie pour en ajouter.</p>
               )}
             </div>
           ))}
@@ -620,15 +620,15 @@ export function TrainingTab() {
       {editId != null ? (
         <section className="rounded-shred border border-shred-accent3 border-t-4 border-t-shred-accent3 bg-shred-surface p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-display text-xl">Edit exercises</h3>
+            <h3 className="font-display text-xl">Modifier les exercices</h3>
             <button type="button" onClick={cancelEdit} className="font-mono text-xs text-shred-muted">
-              Close
+              Fermer
             </button>
           </div>
           {draftEx.map((ex, i) => (
             <div key={i} className="grid lg:grid-cols-12 gap-2 items-end border-b border-shred-border pb-3">
               <label className="lg:col-span-3 text-xs font-mono text-shred-muted block">
-                Name
+                Nom
                 <input
                   list="ex-names"
                   value={ex.name ?? ""}
@@ -640,7 +640,7 @@ export function TrainingTab() {
                 />
               </label>
               <label className="lg:col-span-1 text-xs font-mono text-shred-muted block">
-                Sets
+                Séries
                 <input
                   type="number"
                   value={ex.sets ?? 3}
@@ -651,7 +651,7 @@ export function TrainingTab() {
                 />
               </label>
               <label className="lg:col-span-2 text-xs font-mono text-shred-muted block">
-                Reps target
+                Cible reps
                 <input
                   value={ex.reps_target ?? ""}
                   onChange={(e) =>
@@ -661,7 +661,7 @@ export function TrainingTab() {
                 />
               </label>
               <label className="lg:col-span-2 text-xs font-mono text-shred-muted block">
-                Rest (s)
+                Repos (s)
                 <input
                   type="number"
                   value={ex.rest_seconds ?? 90}
@@ -711,36 +711,38 @@ export function TrainingTab() {
               onClick={addExerciseRow}
               className="rounded-shred border border-shred-border px-3 py-2 font-mono text-xs"
             >
-              + Exercise
+              + Exercice
             </button>
             <button
               type="button"
               onClick={() => void saveEdit()}
               className="rounded-shred border border-shred-accent bg-shred-accent px-4 py-2 font-mono text-sm text-shred-bg"
             >
-              Save session
+              Enregistrer la séance
             </button>
           </div>
         </section>
       ) : null}
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 space-y-4">
-        <h2 className="font-display text-2xl tracking-wide">Post-workout logging</h2>
+        <h2 className="font-display text-2xl tracking-wide">Journal post-séance</h2>
         <p className="text-sm text-shred-muted">
-          Progressive overload rule: if all reps completed with good form → add 1.25kg or +1 rep next session.
+          Règle surcharge progressive : si toutes les reps sont faites avec une bonne forme → +1,25 kg ou +1 rep à la
+          prochaine séance.
         </p>
         <div className="grid sm:grid-cols-3 gap-3">
           <label className="text-xs font-mono text-shred-muted block">
-            Session
+            Séance
             <select
               value={logSessionId === "" ? "" : String(logSessionId)}
               onChange={(e) => setLogSessionId(e.target.value ? Number(e.target.value) : "")}
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
             >
-              <option value="">Select…</option>
+              <option value="">Choisir…</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name} ({s.type})
+                  {s.name} (
+                  {SESSION_TYPE_LABELS[s.type as keyof typeof SESSION_TYPE_LABELS] ?? s.type})
                 </option>
               ))}
             </select>
@@ -760,7 +762,7 @@ export function TrainingTab() {
               onClick={() => void loadPrevWeights()}
               className="w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2 font-mono text-xs"
             >
-              Prefill weights from last same-type session
+              Préremplir les charges (dernière séance même type)
             </button>
           </div>
         </div>
@@ -780,11 +782,11 @@ export function TrainingTab() {
               onClick={() => void submitWorkout()}
               className="rounded-shred border border-shred-accent3 bg-shred-accent3/20 px-4 py-2 font-mono text-sm text-shred-accent3 border-shred-accent3"
             >
-              Save workout performance
+              Enregistrer la performance
             </button>
           </div>
         ) : (
-          <p className="text-sm text-shred-muted">Select a session with exercises to log.</p>
+          <p className="text-sm text-shred-muted">Choisis une séance qui contient des exercices.</p>
         )}
       </section>
 
@@ -891,12 +893,12 @@ function ExerciseLogRow({
       <div className="flex flex-wrap justify-between gap-2">
         <p className="font-display text-lg">{ex.name}</p>
         <p className="text-xs font-mono text-shred-muted">
-          Target {ex.sets} sets · {ex.reps_target} reps
+          Cible {ex.sets} séries · {ex.reps_target} reps
         </p>
       </div>
       <div className="grid sm:grid-cols-4 gap-2">
         <label className="text-xs font-mono text-shred-muted block">
-          Weight (kg)
+          Charge (kg)
           <input
             type="number"
             value={v.weight}
@@ -910,16 +912,16 @@ function ExerciseLogRow({
           />
         </label>
         <label className="text-xs font-mono text-shred-muted block sm:col-span-2">
-          Reps per set (comma-separated)
+          Reps par série (séparées par des virgules)
           <input
             value={v.reps}
             onChange={(e) => onChange({ ...v, reps: e.target.value })}
-            placeholder="e.g. 8, 8, 7"
+            placeholder="ex. 8, 8, 7"
             className="mt-1 w-full rounded-shred border border-shred-border bg-shred-bg px-2 py-1.5"
           />
         </label>
         <label className="text-xs font-mono text-shred-muted block">
-          RPE 1–10
+          RPE 1–10 (effort)
           <input
             type="number"
             value={v.rpe}

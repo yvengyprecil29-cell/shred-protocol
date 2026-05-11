@@ -18,7 +18,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-3 sm:px-4 py-4 flex items-center justify-between gap-4">
           <div>
             <p className="font-display text-2xl tracking-[0.2em] text-shred-accent">SHRED PROTOCOL</p>
-            <p className="text-xs font-mono text-shred-muted mt-1">Industrial · Athletic · Data-first</p>
+            <p className="text-xs font-mono text-shred-muted mt-1">Industriel · Athlétique · Données d&apos;abord</p>
           </div>
         </div>
       </div>

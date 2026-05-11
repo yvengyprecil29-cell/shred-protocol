@@ -47,24 +47,24 @@ export function OverviewTab() {
     return Array.from({ length: n }, (_, i) => {
       const wk = i + 1;
       const w = start + ((end - start) * i) / (n - 1);
-      return { week: `W${wk}`, kg: Math.round(w * 10) / 10 };
+      return { week: `S${wk}`, kg: Math.round(w * 10) / 10 };
     });
   }, []);
 
   const rules = [
     {
-      title: "Protein priority",
-      body: "Hit 210g daily — anchor every meal around a complete protein source before adding sides.",
+      title: "Priorité aux protéines",
+      body: "Viser 210 g/jour — structure chaque repas autour d'une protéine complète avant les accompagnements.",
       edge: "border-t-shred-accent3",
     },
     {
-      title: "Carb timing",
-      body: "Training: cluster carbs pre/post workout. Rest: max 2 meals, spread ≤100g total.",
+      title: "Timing des glucides",
+      body: "Entraînement : regrouper les glucides avant/après la séance. Repos : max 2 repas, répartir ≤100 g au total.",
       edge: "border-t-shred-accent",
     },
     {
-      title: "Fat sources",
-      body: "Olive oil, fish, eggs, avocado. Keeps hormones steady while deficit runs.",
+      title: "Sources de lipides",
+      body: "Huile d'olive, poisson, œufs, avocat. Aide à stabiliser les hormones pendant la sèche.",
       edge: "border-t-shred-accent2",
     },
   ];
@@ -74,15 +74,15 @@ export function OverviewTab() {
       <header>
         <h1 className="font-display text-4xl sm:text-5xl tracking-[0.08em] text-shred-text">SHRED PROTOCOL</h1>
         <p className="mt-2 text-shred-muted font-sans max-w-2xl">
-          {USER.name} · cut to ~{USER.goalWeightKg} kg by late August · {PROGRAM_WEEKS} week block
+          {USER.name} · objectif ~{USER.goalWeightKg} kg fin août · bloc de {PROGRAM_WEEKS} semaines
         </p>
       </header>
 
       <section>
         <div className="flex items-center justify-between gap-4 mb-2">
-          <h2 className="font-display text-xl tracking-wide text-shred-text">Week progress</h2>
+          <h2 className="font-display text-xl tracking-wide text-shred-text">Avancement de la semaine</h2>
           <span className="font-mono text-sm text-shred-accent3">
-            Week {week} / {PROGRAM_WEEKS}
+            Semaine {week} / {PROGRAM_WEEKS}
           </span>
         </div>
         <div className="h-3 rounded-shred bg-shred-surface2 border border-shred-border overflow-hidden">
@@ -94,18 +94,23 @@ export function OverviewTab() {
       </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard title="Calorie target" value={`${macros.calories}`} subtitle="kcal (selected day type)" border="accent" />
-        <StatCard title="Protein target" value={`${macros.protein} g`} subtitle="daily floor" border="accent3" />
         <StatCard
-          title="Latest weight"
+          title="Objectif calories"
+          value={`${macros.calories}`}
+          subtitle="kcal (type de jour sélectionné)"
+          border="accent"
+        />
+        <StatCard title="Objectif protéines" value={`${macros.protein} g`} subtitle="minimum quotidien" border="accent3" />
+        <StatCard
+          title="Poids le plus récent"
           value={latest?.weight != null ? `${latest.weight} kg` : `${USER.startWeightKg} kg`}
-          subtitle={latest?.date ? `logged ${latest.date}` : "default / no log"}
+          subtitle={latest?.date ? `saisi le ${latest.date}` : "défaut / aucune saisie"}
           border="muted"
         />
         <StatCard
-          title="Latest body fat"
+          title="Masse grasse la plus récente"
           value={latest?.body_fat != null ? `${latest.body_fat}%` : `${USER.bodyFatPct}%`}
-          subtitle="from last daily entry"
+          subtitle="dernière entrée quotidienne"
           border="accent2"
         />
       </section>
@@ -113,8 +118,8 @@ export function OverviewTab() {
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h2 className="font-display text-xl tracking-wide">Macro view</h2>
-            <p className="text-sm text-shred-muted mt-1">Toggle day type — carbs and calories update.</p>
+            <h2 className="font-display text-xl tracking-wide">Vue macros</h2>
+            <p className="text-sm text-shred-muted mt-1">Change le type de jour — glucides et calories se mettent à jour.</p>
           </div>
           <div className="flex rounded-shred border border-shred-border overflow-hidden font-mono text-sm">
             <button
@@ -126,7 +131,7 @@ export function OverviewTab() {
                   : "bg-shred-surface2 text-shred-muted hover:text-shred-text"
               }`}
             >
-              Training day
+              Jour d&apos;entraînement
             </button>
             <button
               type="button"
@@ -137,26 +142,26 @@ export function OverviewTab() {
                   : "bg-shred-surface2 text-shred-muted hover:text-shred-text"
               }`}
             >
-              Rest day
+              Jour de repos
             </button>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <MacroBar label="Protein" current={0} target={macros.protein} unit="g" colorClass="bg-shred-accent3" />
-          <MacroBar label="Carbs" current={0} target={macros.carbs} unit="g" colorClass="bg-shred-accent" />
-          <MacroBar label="Fat" current={0} target={macros.fat} unit="g" colorClass="bg-shred-accent2" />
+          <MacroBar label="Protéines" current={0} target={macros.protein} unit="g" colorClass="bg-shred-accent3" />
+          <MacroBar label="Glucides" current={0} target={macros.carbs} unit="g" colorClass="bg-shred-accent" />
+          <MacroBar label="Lipides" current={0} target={macros.fat} unit="g" colorClass="bg-shred-accent2" />
           <MacroBar label="Calories" current={0} target={macros.calories} unit=" kcal" colorClass="bg-shred-muted" />
         </div>
         <p className="text-xs text-shred-muted mt-4 font-mono">
-          Targets: {dayMode === "training" ? "2,250 kcal · 150g carbs" : "2,100 kcal · 100g carbs"} · protein 210g · fat
-          100g
+          Cibles : {dayMode === "training" ? "2 250 kcal · 150 g glucides" : "2 100 kcal · 100 g glucides"} · protéines
+          210 g · lipides 100 g
         </p>
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4 sm:p-5">
-        <h2 className="font-display text-xl tracking-wide mb-4">Weight projection</h2>
+        <h2 className="font-display text-xl tracking-wide mb-4">Projection de poids</h2>
         <p className="text-sm text-shred-muted mb-4">
-          Linear model {USER.startWeightKg} kg → {USER.goalWeightKg} kg across {PROGRAM_WEEKS} weeks.
+          Modèle linéaire {USER.startWeightKg} kg → {USER.goalWeightKg} kg sur {PROGRAM_WEEKS} semaines.
         </p>
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -177,7 +182,7 @@ export function OverviewTab() {
                   fontFamily: "var(--font-jetbrains)",
                 }}
                 labelStyle={{ color: "#e8ff3b" }}
-                formatter={(v: number) => [`${v} kg`, "Projected"]}
+                formatter={(v: number) => [`${v} kg`, "Projection"]}
               />
               <Bar dataKey="kg" fill="#3bffd4" radius={[4, 4, 0, 0]} />
             </BarChart>
