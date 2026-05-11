@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DietTab } from "./components/tabs/DietTab";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { ProgressTab } from "./components/tabs/ProgressTab";
@@ -8,9 +8,14 @@ import { TrackingTab } from "./components/tabs/TrackingTab";
 import { TrainingTab } from "./components/tabs/TrainingTab";
 import { WhoopTab } from "./components/tabs/WhoopTab";
 import { TabBar, type TabId } from "./components/ui/TabBar";
+import { migrateLocalStorageToTurso } from "@/lib/migrate";
 
 export default function HomePage() {
   const [tab, setTab] = useState<TabId>("overview");
+
+  useEffect(() => {
+    migrateLocalStorageToTurso().catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-shred-bg">
