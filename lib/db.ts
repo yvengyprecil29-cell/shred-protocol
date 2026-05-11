@@ -12,8 +12,7 @@ export function getDbError(): Error | null {
 export function getDb(): Database.Database | null {
   if (dbInstance) return dbInstance;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const DatabaseConstructor = require("better-sqlite3") as typeof import("better-sqlite3");
+    const DatabaseConstructor = require("better-sqlite3") as typeof import("better-sqlite3"); // eslint-disable-line
     const dataDir = path.join(process.cwd(), "data");
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
