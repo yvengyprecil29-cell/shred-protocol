@@ -13,7 +13,14 @@ import { migrateLocalStorageToTurso } from "@/lib/migrate";
 export default function HomePage() {
   const [tab, setTab] = useState<TabId>("overview");
 
+  const [migrating, setMigrating] = useState(false);
+  const [migrated, setMigrated] = useState(false);
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("migrate") === "1") {
+      localStorage.removeItem("shred_migrated_to_turso_v1");
+    }
     migrateLocalStorageToTurso().catch(() => {});
   }, []);
 
@@ -25,6 +32,19 @@ export default function HomePage() {
             <p className="font-display text-2xl tracking-[0.2em] text-shred-accent">SHRED PROTOCOL</p>
             <p className="text-xs font-mono text-shred-muted mt-1">Industriel · Athlétique · Données d&apos;abord</p>
           </div>
+          <button
+            onClick={async () => {
+              setMigrating(true);
+              localStorage.removeItem("shred_migrated_to_turso_v1");
+              await migrateLocalStorageToTurso();
+              setMigrating(false);
+              setMigrated(true);
+              window.location.reload();
+            }}
+            className="text-xs font-mono px-3 py-1 rounded border border-shred-border bg-shred-surface text-shred-muted hover:text-shred-text"
+          >
+            {migrating ? "Sync..." : migrated ? "✓ Sync fait" : "Sync données"}
+          </button>
         </div>
       </div>
       <TabBar active={tab} onChange={setTab} />
