@@ -7,6 +7,7 @@ import { ProgressTab } from "./components/tabs/ProgressTab";
 import { TrackingTab } from "./components/tabs/TrackingTab";
 import { TrainingTab } from "./components/tabs/TrainingTab";
 import { WhoopTab } from "./components/tabs/WhoopTab";
+import { ReportsTab } from "./components/tabs/ReportsTab";
 import { TabBar, type TabId } from "./components/ui/TabBar";
 import { migrateLocalStorageToTurso } from "@/lib/migrate";
 
@@ -55,6 +56,7 @@ export default function HomePage() {
         {tab === "tracking" ? <TrackingTab /> : null}
         {tab === "whoop" ? <WhoopTab /> : null}
         {tab === "progress" ? <ProgressTab /> : null}
+        {tab === "reports" ? <ReportsTab /> : null}
       </main>
     </div>
   );
