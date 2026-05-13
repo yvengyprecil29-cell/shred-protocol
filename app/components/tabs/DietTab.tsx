@@ -216,8 +216,10 @@ function AddFoodModal({
         }),
       });
       const j = await res.json() as { ok: boolean; data?: FoodItem };
-      if (j.ok && j.data) onAdd(j.data);
-      else onClose();
+      if (j.ok && j.data) {
+        window.dispatchEvent(new Event("foodUpdated"));
+        onAdd(j.data);
+      } else onClose();
     } finally { setSaving(false); }
   }
 
@@ -423,6 +425,7 @@ function MealJournal() {
   async function deleteItem(id: number) {
     setItems((prev) => prev.filter((f) => f.id !== id));
     await fetch(`/api/food-items?id=${id}`, { method: "DELETE" });
+    window.dispatchEvent(new Event("foodUpdated"));
   }
 
   const target = dayType === "training" ? MACRO_TRAINING : MACRO_REST;

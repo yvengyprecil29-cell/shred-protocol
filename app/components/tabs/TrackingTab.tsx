@@ -78,6 +78,13 @@ export function TrackingTab() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [loadTodaySummary]);
 
+  // Instant sync when food is added/removed in the Régime tab
+  useEffect(() => {
+    function onFoodUpdated() { void loadTodaySummary(); }
+    window.addEventListener("foodUpdated", onFoodUpdated);
+    return () => window.removeEventListener("foodUpdated", onFoodUpdated);
+  }, [loadTodaySummary]);
+
   // Auto-fill macros from food journal whenever summary changes
   useEffect(() => {
     if (!todaySummary) return;

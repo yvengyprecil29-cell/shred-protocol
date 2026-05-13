@@ -37,23 +37,26 @@ export async function GET(req: Request) {
     args: [date],
   });
 
-  // Food totals by meal
-  const byMealResult = await db.execute({
-    sql: `SELECT fi.meal,
-                 COALESCE(SUM(fi.calories), 0) as calories,
-                 COALESCE(SUM(fi.protein), 0)  as protein,
-                 COALESCE(SUM(fi.carbs), 0)    as carbs,
-                 COALESCE(SUM(fi.fat), 0)       as fat
-          FROM food_items fi
-          JOIN daily_logs dl ON dl.id = fi.log_id
-          WHERE dl.date = ?
-          GROUP BY fi.meal
-          ORDER BY fi.meal`,
-    args: [date],
-  });
-
+  // Food totals — 2-step to avoid JOIN issues in serverless
   type MealRow = { meal: string | null; calories: number; protein: number; carbs: number; fat: number };
-  const byMeal = byMealResult.rows as unknown as MealRow[];
+  let byMeal: MealRow[] = [];
+  const logForDate = await db.execute({ sql: `SELECT id FROM daily_logs WHERE date = ?`, args: [date] });
+  if (logForDate.rows.length > 0) {
+    const logId = Number((logForDate.rows[0] as unknown as { id: number }).id);
+    const byMealResult = await db.execute({
+      sql: `SELECT meal,
+                   COALESCE(SUM(calories), 0) as calories,
+                   COALESCE(SUM(protein), 0)  as protein,
+                   COALESCE(SUM(carbs), 0)    as carbs,
+                   COALESCE(SUM(fat), 0)       as fat
+            FROM food_items
+            WHERE log_id = ?
+            GROUP BY meal
+            ORDER BY meal`,
+      args: [logId],
+    });
+    byMeal = byMealResult.rows as unknown as MealRow[];
+  }
 
   const totalCalories = byMeal.reduce((s, m) => s + m.calories, 0);
   const totalProtein = byMeal.reduce((s, m) => s + m.protein, 0);

@@ -156,6 +156,13 @@ export function OverviewTab({ sessionRefreshKey = 0 }: { sessionRefreshKey?: num
     return () => clearInterval(id);
   }, [loadToday]);
 
+  // Instant sync when food is added/removed in the Régime tab
+  useEffect(() => {
+    function onFoodUpdated() { loadToday(); }
+    window.addEventListener("foodUpdated", onFoodUpdated);
+    return () => window.removeEventListener("foodUpdated", onFoodUpdated);
+  }, [loadToday]);
+
   const latest = useMemo(
     () => [...logs].sort((a, b) => (a.date < b.date ? 1 : -1))[0],
     [logs],
