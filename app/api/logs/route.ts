@@ -105,6 +105,10 @@ export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-  await db.execute({ sql: `DELETE FROM daily_logs WHERE id = ?`, args: [Number(id)] });
+  const lid = Number(id);
+  await db.batch([
+    { sql: `DELETE FROM food_items WHERE log_id = ?`, args: [lid] },
+    { sql: `DELETE FROM daily_logs WHERE id = ?`, args: [lid] },
+  ], "write");
   return NextResponse.json({ ok: true });
 }

@@ -127,4 +127,12 @@ async function initSchema(db: Client) {
     `CREATE INDEX IF NOT EXISTS idx_wl_session_date ON workout_logs(session_id, date)`,
     `CREATE INDEX IF NOT EXISTS idx_walks_session ON fast_walks(session_id, date)`,
   ], "write");
+  // Safe migrations — silenced if column already exists
+  await db.execute(`ALTER TABLE food_items ADD COLUMN meal TEXT DEFAULT 'meal1'`).catch(() => {});
+  // One-time cleanup: delete the "Jambes" template and its exercise definitions.
+  // workout_logs are intentionally preserved (keepLogs pattern).
+  await db.batch([
+    `DELETE FROM exercises WHERE session_id IN (SELECT id FROM sessions WHERE name = 'Jambes' AND template = 1)`,
+    `DELETE FROM sessions WHERE name = 'Jambes' AND template = 1`,
+  ], "write").catch(() => {});
 }

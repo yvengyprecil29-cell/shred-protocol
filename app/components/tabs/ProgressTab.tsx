@@ -8,38 +8,187 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { MACRO_REST, MACRO_TRAINING, PROTEIN_OK_THRESHOLD } from "@/lib/constants";
-import type { DailyLog, WorkoutLogRow } from "@/lib/types";
+import { MACRO_REST, MACRO_TRAINING, PROTEIN_OK_THRESHOLD, USER } from "@/lib/constants";
+import type { DailyLog, SessionRow, WorkoutLogRow } from "@/lib/types";
 import { localStore } from "@/lib/localStore";
 
 function targetCals(day: string): number {
   return day === "rest" ? MACRO_REST.calories : MACRO_TRAINING.calories;
 }
 
+// ─── Exercise stat types ──────────────────────────────────────────────────────
+
+type ExerciseStat = {
+  name: string;
+  muscle: string;
+  lastDate: string;
+  bestSet: WorkoutLogRow | null;
+  trend: "up" | "down" | "same";
+  weightDiff: number;
+  isPR: boolean;
+  sessionCount: number;
+};
+
+function computeExerciseStats(wl: WorkoutLogRow[], sessions: SessionRow[]): ExerciseStat[] {
+  const sessionNameMap: Record<number, string> = {};
+  for (const s of sessions) {
+    sessionNameMap[s.id] = s.name || s.type || "AUTRE";
+  }
+
+  const byExercise: Record<string, WorkoutLogRow[]> = {};
+  for (const r of wl) {
+    if (!byExercise[r.exercise_name]) byExercise[r.exercise_name] = [];
+    byExercise[r.exercise_name].push(r);
+  }
+  return Object.entries(byExercise).map(([name, rows]) => {
+    const dates = [...new Set(rows.map((r) => r.date))].sort((a, b) => b.localeCompare(a));
+    const lastDate = dates[0] ?? "";
+    const prevDate = dates[1];
+    const lastRows = rows.filter((r) => r.date === lastDate);
+    const prevRows = prevDate ? rows.filter((r) => r.date === prevDate) : [];
+    const lastVol = lastRows.reduce((s, r) => s + r.weight_kg * (Number(r.reps_done) || 0), 0);
+    const prevVol = prevRows.reduce((s, r) => s + r.weight_kg * (Number(r.reps_done) || 0), 0);
+    const lastMaxW = Math.max(...lastRows.map((r) => r.weight_kg), 0);
+    const prevMaxW = prevRows.length ? Math.max(...prevRows.map((r) => r.weight_kg), 0) : 0;
+    const allTimeMax = Math.max(...rows.map((r) => r.weight_kg), 0);
+    const bestSet = lastRows.reduce<WorkoutLogRow | null>((best, r) => !best || r.weight_kg > best.weight_kg ? r : best, null);
+    const trend = prevVol === 0 ? "same" : lastVol > prevVol * 1.01 ? "up" : lastVol < prevVol * 0.99 ? "down" : "same";
+    const isPR = prevMaxW > 0 && lastMaxW > prevMaxW && lastMaxW >= allTimeMax;
+    // Group by the session the exercise was most recently logged in
+    const latestRow = rows.reduce((a, b) => (a.date >= b.date ? a : b), rows[0]);
+    const muscle = sessionNameMap[latestRow.session_id] ?? "AUTRE";
+    return {
+      name,
+      muscle,
+      lastDate,
+      bestSet,
+      trend,
+      weightDiff: Math.round((lastMaxW - prevMaxW) * 10) / 10,
+      isPR,
+      sessionCount: dates.length,
+    };
+  });
+}
+
+// ─── Accordion component ──────────────────────────────────────────────────────
+
+function ExerciseAccordion({ wl, sessions }: { wl: WorkoutLogRow[]; sessions: SessionRow[] }) {
+  const [open, setOpen] = useState<string | null>(null);
+
+  const stats = useMemo(() => computeExerciseStats(wl, sessions), [wl, sessions]);
+
+  const byMuscle = useMemo(() => {
+    const map: Record<string, ExerciseStat[]> = {};
+    for (const ex of stats) {
+      if (!map[ex.muscle]) map[ex.muscle] = [];
+      map[ex.muscle].push(ex);
+    }
+    for (const arr of Object.values(map)) arr.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    return map;
+  }, [stats]);
+
+  const orderedMuscles = useMemo(
+    () => Object.keys(byMuscle).sort((a, b) => a.localeCompare(b, "fr")),
+    [byMuscle],
+  );
+
+  if (orderedMuscles.length === 0) {
+    return <p className="text-sm text-shred-muted font-mono">Aucune donnée d&apos;entraînement. Commence à logger tes séances.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {orderedMuscles.map((muscle) => {
+        const exercises = byMuscle[muscle];
+        const isOpen = open === muscle;
+        return (
+          <div key={muscle} className="rounded-shred border border-shred-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setOpen(isOpen ? null : muscle)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-shred-surface hover:bg-shred-surface2 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="font-display text-lg">{muscle}</span>
+                <span className="font-mono text-xs text-shred-muted bg-shred-surface2 px-2 py-0.5 rounded-full border border-shred-border">
+                  {exercises.length} exercice{exercises.length > 1 ? "s" : ""}
+                </span>
+              </div>
+              <span className="font-mono text-shred-muted text-sm">{isOpen ? "▼" : "▶"}</span>
+            </button>
+
+            {isOpen && (
+              <div className="border-t border-shred-border bg-shred-surface2 divide-y divide-shred-border/30">
+                {exercises.map((ex) => (
+                  <div key={ex.name} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono text-sm text-shred-text truncate">{ex.name}</p>
+                        <p className="text-xs text-shred-muted font-mono mt-0.5">
+                          {ex.bestSet
+                            ? `Dernier : ${ex.bestSet.weight_kg} kg × ${ex.bestSet.reps_done}`
+                            : "Aucune donnée"}
+                          {ex.lastDate ? ` · ${ex.lastDate.slice(5)}` : ""}
+                        </p>
+                        <p className="text-[10px] text-shred-muted/50 font-mono">{ex.sessionCount} séance{ex.sessionCount > 1 ? "s" : ""}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {ex.isPR && (
+                          <span className="font-mono text-[10px] text-shred-accent bg-shred-accent/10 border border-shred-accent/30 px-1.5 py-0.5 rounded">
+                            PR 🏆
+                          </span>
+                        )}
+                        <span className={`font-mono text-sm font-bold ${
+                          ex.trend === "up" ? "text-shred-accent3" : ex.trend === "down" ? "text-shred-accent2" : "text-shred-muted"
+                        }`}>
+                          {ex.trend === "up"
+                            ? `↑${ex.weightDiff > 0 ? ` +${ex.weightDiff}kg` : " vol."}`
+                            : ex.trend === "down"
+                            ? "↓"
+                            : "="}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProgressTab() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [wl, setWl] = useState<WorkoutLogRow[]>([]);
   const [walks, setWalks] = useState<{ date: string }[]>([]);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [pickExercise, setPickExercise] = useState("");
 
   const load = useCallback(async () => {
-    const [lr, wr, wk] = await Promise.all([
+    const [lr, wr, wk, sr] = await Promise.all([
       fetch("/api/logs"),
       fetch("/api/walks"),
       fetch("/api/workout-logs"),
+      fetch("/api/sessions"),
     ]);
-    const [lj, wj, kj] = await Promise.all([lr.json(), wr.json(), wk.json()]);
+    const [lj, wj, kj, sj] = await Promise.all([lr.json(), wr.json(), wk.json(), sr.json()]);
     if (lr.ok && lj.ok) setLogs(lj.data as DailyLog[]);
     else setLogs(localStore.getDailyLogs() as DailyLog[]);
     if (wr.ok && wj.ok) setWalks(wj.data as { date: string }[]);
     else setWalks(localStore.getWalks() as { date: string }[]);
     if (wk.ok && kj.ok) setWl(kj.data as WorkoutLogRow[]);
     else setWl(localStore.getWorkoutLogs() as WorkoutLogRow[]);
+    if (sr.ok && sj.ok) setSessions(sj.data as SessionRow[]);
+    else setSessions(localStore.getSessions() as SessionRow[]);
   }, []);
 
   useEffect(() => {
@@ -51,13 +200,16 @@ export function ProgressTab() {
     [logs],
   );
 
-  const weightSeries = useMemo(
-    () =>
-      sortedLogs
-        .filter((l) => l.weight != null)
-        .map((l) => ({ date: l.date.slice(5), kg: l.weight as number })),
-    [sortedLogs],
-  );
+  const weightSeries = useMemo(() => {
+    const pts = sortedLogs
+      .filter((l) => l.weight != null)
+      .map((l) => ({ date: l.date.slice(5), kg: l.weight as number }));
+    return pts.map((d, i, arr) => {
+      const window = arr.slice(Math.max(0, i - 6), i + 1);
+      const ma7 = Math.round((window.reduce((s, x) => s + x.kg, 0) / window.length) * 10) / 10;
+      return { ...d, ma7: window.length >= 3 ? ma7 : undefined };
+    });
+  }, [sortedLogs]);
 
   const bfSeries = useMemo(
     () =>
@@ -170,18 +322,36 @@ export function ProgressTab() {
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface p-4">
-        <h2 className="font-display text-xl mb-3">Poids</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display text-xl">Poids</h2>
+          <div className="flex items-center gap-3 font-mono text-[10px] text-shred-muted">
+            <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-shred-accent" />Poids</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-shred-accent3 opacity-70" style={{ backgroundImage: "repeating-linear-gradient(90deg,#3bffd4 0,#3bffd4 3px,transparent 3px,transparent 6px)" }} />Moy. 7j</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-shred-accent/40" style={{ backgroundImage: "repeating-linear-gradient(90deg,#e8ff3b 0,#e8ff3b 4px,transparent 4px,transparent 8px)" }} />Objectif</span>
+          </div>
+        </div>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weightSeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="#222228" />
               <XAxis dataKey="date" tick={{ fill: "#666670", fontSize: 11 }} />
-              <YAxis domain={["dataMin - 2", "dataMax + 2"]} tick={{ fill: "#666670", fontSize: 11 }} width={40} />
+              <YAxis domain={["dataMin - 1", "dataMax + 1"]} tick={{ fill: "#666670", fontSize: 11 }} width={40} />
               <Tooltip
-                contentStyle={{ background: "#111114", border: "1px solid #222228", borderRadius: 12 }}
-                formatter={(v: number) => [`${v} kg`, "Poids"]}
+                contentStyle={{ background: "#111114", border: "1px solid #222228", borderRadius: 12, fontFamily: "var(--font-jetbrains)", fontSize: 11 }}
+                formatter={(v: number, name: string) => [
+                  `${v} kg`,
+                  name === "kg" ? "Poids" : "Moy. 7 jours",
+                ]}
               />
-              <Line type="monotone" dataKey="kg" stroke="#e8ff3b" strokeWidth={2} dot={{ r: 2 }} />
+              <ReferenceLine
+                y={USER.goalWeightKg}
+                stroke="#e8ff3b"
+                strokeDasharray="5 5"
+                strokeOpacity={0.35}
+                label={{ value: `${USER.goalWeightKg} kg`, position: "insideTopRight", fill: "#e8ff3b", fontSize: 9, opacity: 0.6, fontFamily: "var(--font-jetbrains)" }}
+              />
+              <Line type="monotone" dataKey="kg" stroke="#e8ff3b" strokeWidth={2} dot={{ r: 2 }} name="Poids" />
+              <Line type="monotone" dataKey="ma7" stroke="#3bffd4" strokeWidth={1.5} dot={false} strokeDasharray="3 3" strokeOpacity={0.7} name="Moy. 7j" connectNulls />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -275,6 +445,17 @@ export function ProgressTab() {
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </section>
+
+      {/* Accordion par séance */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="font-display text-2xl tracking-wide">Exercices par séance</h2>
+          <p className="text-xs text-shred-muted font-mono mt-1">
+            Clique sur une séance pour voir les exercices · ↑ progression · ↓ régression · = stable · 🏆 nouveau PR
+          </p>
+        </div>
+        <ExerciseAccordion wl={wl} sessions={sessions} />
       </section>
 
       <section className="rounded-shred border border-shred-border bg-shred-surface overflow-x-auto">

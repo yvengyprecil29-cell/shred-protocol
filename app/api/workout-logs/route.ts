@@ -60,6 +60,20 @@ type Body = {
   rows: RowInput[];
 };
 
+export async function DELETE(req: Request) {
+  const db = await getDb();
+  if (!db) return noDb();
+  const { searchParams } = new URL(req.url);
+  const sessionId = searchParams.get("session_id");
+  const date = searchParams.get("date");
+  if (!sessionId || !date) return NextResponse.json({ ok: false, error: "session_id and date required" }, { status: 400 });
+  await db.batch([
+    { sql: `DELETE FROM workout_logs WHERE session_id = ? AND date = ?`, args: [Number(sessionId), date] },
+    { sql: `DELETE FROM fast_walks WHERE session_id = ? AND date = ?`, args: [Number(sessionId), date] },
+  ], "write");
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: Request) {
   const db = await getDb();
   if (!db) return noDb();

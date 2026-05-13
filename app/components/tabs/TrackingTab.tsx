@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { MACRO_REST, MACRO_TRAINING, PROTEIN_OK_THRESHOLD } from "@/lib/constants";
 import type { DailyLog, FoodItem, SessionRow } from "@/lib/types";
 import { localStore, nextLocalId } from "@/lib/localStore";
+import { ConfirmDialog } from "@/app/components/ui/ConfirmDialog";
 
 type LogWithFood = DailyLog & { food_items?: FoodItem[] };
 type SessionWithEx = SessionRow & { exercises?: unknown[] };
@@ -27,10 +28,8 @@ export function TrackingTab() {
   const [showFood, setShowFood] = useState(false);
 
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [weight, setWeight] = useState("106.6");
-  const [bodyFat, setBodyFat] = useState("18");
-  const [dayType, setDayType] = useState<"training" | "rest">("training");
-  const [sessionId, setSessionId] = useState<number | "">("");
+  const [weight, setWeight] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
   const [calories, setCalories] = useState("");
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
@@ -44,6 +43,58 @@ export function TrackingTab() {
   >([]);
 
   const [msg, setMsg] = useState<string | null>(null);
+  const [deletingLogId, setDeletingLogId] = useState<number | null>(null);
+
+  // ── Auto-fill from today-summary ──────────────────────────────────────────
+  type MealTotals = { meal: string | null; calories: number; protein: number; carbs: number; fat: number };
+  type TodaySummary = {
+    sessions: { id: number; name: string; type: string }[];
+    walk: { duration_minutes: number; distance_km: number | null } | null;
+    food_totals: { calories: number; protein: number; carbs: number; fat: number; by_meal: MealTotals[] } | null;
+  };
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
+  const [manualMacros, setManualMacros] = useState(false);
+
+  const loadTodaySummary = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/today-summary?date=${date}`);
+      const j = await res.json() as { ok: boolean; data?: TodaySummary };
+      if (j.ok && j.data) setTodaySummary(j.data);
+    } catch { /* ignore */ }
+  }, [date]);
+
+  useEffect(() => { void loadTodaySummary(); }, [loadTodaySummary]);
+
+  // Poll every 30 s so the fields update if the user logs a workout in another tab
+  useEffect(() => {
+    const id = setInterval(() => void loadTodaySummary(), 30_000);
+    return () => clearInterval(id);
+  }, [loadTodaySummary]);
+
+  // Also refetch whenever the browser tab becomes visible again
+  useEffect(() => {
+    function onVisible() { if (document.visibilityState === "visible") void loadTodaySummary(); }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loadTodaySummary]);
+
+  // Auto-fill macros from food journal whenever summary changes
+  useEffect(() => {
+    if (!todaySummary) return;
+    const ft = todaySummary.food_totals;
+    if (ft && !manualMacros) {
+      setCalories(ft.calories > 0 ? String(Math.round(ft.calories)) : "");
+      setProtein(ft.protein > 0 ? String(Math.round(ft.protein)) : "");
+      setCarbs(ft.carbs > 0 ? String(Math.round(ft.carbs)) : "");
+      setFat(ft.fat > 0 ? String(Math.round(ft.fat)) : "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todaySummary]);
+
+  // Derived from today-summary — no manual input needed
+  const dayType: "training" | "rest" = todaySummary?.sessions && todaySummary.sessions.length > 0 ? "training" : "rest";
+
+  const MEAL_LABELS: Record<string, string> = { meal1: "R1", meal2: "R2", meal3: "R3", meal4: "R4" };
 
   const load = useCallback(async () => {
     const [lr, sr] = await Promise.all([fetch("/api/logs"), fetch("/api/sessions")]);
@@ -86,6 +137,16 @@ export function TrackingTab() {
   const proteinOk = runningTotals.protein >= 200;
   const calHigh = runningTotals.calories > macroTarget.calories;
 
+  async function deleteLog(id: number) {
+    setDeletingLogId(null);
+    const res = await fetch(`/api/logs?id=${id}`, { method: "DELETE" });
+    const j = await res.json();
+    if (res.ok && j.ok) { await load(); return; }
+    const all = localStore.getDailyLogs() as LogWithFood[];
+    localStore.setDailyLogs(all.filter((x) => x.id !== id));
+    await load();
+  }
+
   async function saveEntry() {
     setMsg(null);
     const foodPayload = foods
@@ -105,7 +166,7 @@ export function TrackingTab() {
       weight: weight ? Number(weight) : null,
       body_fat: bodyFat ? Number(bodyFat) : null,
       day_type: dayType,
-      session_id: sessionId === "" ? null : sessionId,
+      session_id: todaySummary?.sessions?.[0]?.id ?? null,
       calories: calories ? Number(calories) : null,
       protein: protein ? Number(protein) : null,
       carbs: carbs ? Number(carbs) : null,
@@ -158,6 +219,7 @@ export function TrackingTab() {
         protein: f.protein,
         carbs: f.carbs,
         fat: f.fat,
+        meal: null,
       }));
       foodMap[String(id)] = row.food_items;
       localStore.setFoodItems(foodMap);
@@ -172,6 +234,17 @@ export function TrackingTab() {
 
   return (
     <div className="space-y-8">
+      {deletingLogId != null && (
+        <ConfirmDialog
+          title="Supprimer cette entrée ?"
+          message="Ce journal quotidien et tous ses aliments associés seront supprimés définitivement."
+          confirmLabel="Confirmer la suppression"
+          danger
+          onConfirm={() => void deleteLog(deletingLogId)}
+          onCancel={() => setDeletingLogId(null)}
+        />
+      )}
+
       <header>
         <h1 className="font-display text-4xl tracking-[0.08em]">Suivi quotidien</h1>
         <p className="text-shred-muted mt-2">Alimentation et poids. Une entrée par jour calendaire.</p>
@@ -224,32 +297,29 @@ export function TrackingTab() {
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
             />
           </label>
-          <label className="text-xs font-mono text-shred-muted block">
+          <div className="text-xs font-mono text-shred-muted block">
             Type de jour
-            <select
-              value={dayType}
-              onChange={(e) => setDayType(e.target.value as "training" | "rest")}
-              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
-            >
-              <option value="training">Jour d&apos;entraînement</option>
-              <option value="rest">Jour de repos</option>
-            </select>
-          </label>
-          <label className="text-xs font-mono text-shred-muted block">
+            <div className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface px-3 py-2 font-mono text-sm">
+              {dayType === "training"
+                ? <span style={{ color: "#e8ff3b" }}>Jour d&apos;entraînement</span>
+                : <span className="text-shred-muted">Jour de repos</span>}
+            </div>
+          </div>
+          <div className="text-xs font-mono text-shred-muted block">
             Séance faite aujourd&apos;hui
-            <select
-              value={sessionId === "" ? "" : String(sessionId)}
-              onChange={(e) => setSessionId(e.target.value ? Number(e.target.value) : "")}
-              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
-            >
-              <option value="">Aucune</option>
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface px-3 py-2 font-mono text-sm">
+              {todaySummary?.sessions && todaySummary.sessions.length > 0
+                ? <span className="text-shred-accent3">✓ {todaySummary.sessions.map((s) => s.name).join(" · ")}</span>
+                : <span className="text-shred-muted">Aucune séance aujourd&apos;hui</span>}
+            </div>
+            {todaySummary?.walk && (
+              <div className="mt-1 flex items-center gap-1 rounded-shred border border-shred-accent3/30 bg-shred-accent3/5 px-2 py-0.5 w-fit">
+                <span className="text-[11px] font-mono text-shred-accent3">
+                  🚶 {todaySummary.walk.duration_minutes} min{todaySummary.walk.distance_km ? ` · ${todaySummary.walk.distance_km} km` : ""}
+                </span>
+              </div>
+            )}
+          </div>
           <label className="text-xs font-mono text-shred-muted block">
             Eau (L)
             <input
@@ -260,42 +330,41 @@ export function TrackingTab() {
               className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
             />
           </label>
-          <label className="text-xs font-mono text-shred-muted block">
-            Calories consommées
-            <input
-              type="number"
-              value={calories}
-              onChange={(e) => setCalories(e.target.value)}
-              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
-            />
-          </label>
-          <label className="text-xs font-mono text-shred-muted block">
-            Protéines (g)
-            <input
-              type="number"
-              value={protein}
-              onChange={(e) => setProtein(e.target.value)}
-              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
-            />
-          </label>
-          <label className="text-xs font-mono text-shred-muted block">
-            Glucides (g)
-            <input
-              type="number"
-              value={carbs}
-              onChange={(e) => setCarbs(e.target.value)}
-              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
-            />
-          </label>
-          <label className="text-xs font-mono text-shred-muted block">
-            Lipides (g)
-            <input
-              type="number"
-              value={fat}
-              onChange={(e) => setFat(e.target.value)}
-              className="mt-1 w-full rounded-shred border border-shred-border bg-shred-surface2 px-3 py-2"
-            />
-          </label>
+          {/* Macros — auto-fill depuis le journal alimentaire */}
+          <div className="sm:col-span-2 lg:col-span-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-shred-muted">Macros</span>
+              <div className="flex items-center gap-2">
+                {todaySummary?.food_totals && !manualMacros && (
+                  <span className="text-shred-accent3 text-[10px] font-mono">• Auto depuis journal</span>
+                )}
+                <button type="button" onClick={() => setManualMacros((v) => !v)}
+                  className="text-[10px] font-mono border border-shred-border rounded px-1.5 py-0.5 text-shred-muted hover:text-shred-text transition-colors">
+                  {manualMacros ? "← Auto" : "Modifier"}
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {([
+                { label: "Calories (kcal)", val: calories, set: setCalories },
+                { label: "Protéines (g)", val: protein, set: setProtein },
+                { label: "Glucides (g)", val: carbs, set: setCarbs },
+                { label: "Lipides (g)", val: fat, set: setFat },
+              ]).map(({ label, val, set }) => (
+                <label key={label} className="text-xs font-mono text-shred-muted block">
+                  {label}
+                  <input type="number" value={val} onChange={(e) => set(e.target.value)}
+                    readOnly={!manualMacros && !!todaySummary?.food_totals}
+                    className={`mt-1 w-full rounded-shred border border-shred-border px-2 py-1.5 text-sm font-mono ${!manualMacros && todaySummary?.food_totals ? "bg-shred-surface text-shred-muted" : "bg-shred-surface2"}`} />
+                </label>
+              ))}
+            </div>
+            {todaySummary?.food_totals?.by_meal && todaySummary.food_totals.by_meal.length > 0 && !manualMacros && (
+              <p className="text-[10px] text-shred-muted/50 font-mono">
+                {todaySummary.food_totals.by_meal.map((m) => `${MEAL_LABELS[m.meal ?? "meal1"] ?? m.meal}: ${Math.round(m.calories)} kcal`).join(" · ")}
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-3 pt-5">
             <span className="text-xs font-mono text-shred-muted">Créatine prise</span>
             <button
@@ -419,13 +488,12 @@ export function TrackingTab() {
           </div>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => void saveEntry()}
-          className="rounded-shred border border-shred-accent bg-shred-accent px-5 py-2 font-mono text-sm text-shred-bg"
-        >
-          Enregistrer la journée
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button type="button" onClick={() => void saveEntry()}
+            className="rounded-shred border border-shred-accent bg-shred-accent px-5 py-2 font-mono text-sm text-shred-bg">
+            Enregistrer la journée
+          </button>
+        </div>
         {msg ? <p className="font-mono text-sm text-shred-accent3">{msg}</p> : null}
       </section>
 
@@ -441,6 +509,7 @@ export function TrackingTab() {
               <th className="px-3 py-2">Lip.</th>
               <th className="px-3 py-2">Séance</th>
               <th className="px-3 py-2">Statut</th>
+              <th className="px-2 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -463,6 +532,16 @@ export function TrackingTab() {
                   <td className="px-3 py-2 text-shred-muted">{sess?.name ?? "—"}</td>
                   <td className={`px-3 py-2 font-mono ${st.ok ? "text-shred-accent3" : "text-shred-accent2"}`}>
                     {st.label}
+                  </td>
+                  <td className="px-2 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeletingLogId(log.id)}
+                      className="text-shred-muted/30 hover:text-red-400 transition-colors font-mono text-sm"
+                      title="Supprimer cette entrée"
+                    >
+                      🗑
+                    </button>
                   </td>
                 </tr>
               );

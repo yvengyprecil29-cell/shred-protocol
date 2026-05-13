@@ -28,6 +28,7 @@ export interface FoodItem {
   protein: number | null;
   carbs: number | null;
   fat: number | null;
+  meal: string | null;
 }
 
 export interface SessionRow {

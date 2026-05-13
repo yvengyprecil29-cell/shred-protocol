@@ -111,6 +111,24 @@ export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-  await db.execute({ sql: `DELETE FROM sessions WHERE id = ?`, args: [Number(id)] });
+  const sid = Number(id);
+  const keepLogs = searchParams.get("keepLogs") === "1";
+
+  if (keepLogs) {
+    // Template deletion: only remove the definition, keep all historical workout_logs intact
+    await db.batch([
+      { sql: `DELETE FROM exercises WHERE session_id = ?`, args: [sid] },
+      { sql: `DELETE FROM sessions WHERE id = ?`, args: [sid] },
+    ], "write");
+  } else {
+    // Full cascade for real sessions
+    await db.batch([
+      { sql: `UPDATE daily_logs SET session_id = NULL WHERE session_id = ?`, args: [sid] },
+      { sql: `DELETE FROM fast_walks WHERE session_id = ?`, args: [sid] },
+      { sql: `DELETE FROM workout_logs WHERE session_id = ?`, args: [sid] },
+      { sql: `DELETE FROM exercises WHERE session_id = ?`, args: [sid] },
+      { sql: `DELETE FROM sessions WHERE id = ?`, args: [sid] },
+    ], "write");
+  }
   return NextResponse.json({ ok: true });
 }

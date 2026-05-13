@@ -32,6 +32,8 @@ export const MUSCLE_COLORS: Record<MuscleGroup, string> = {
   Cardio: "border-t-cyan-400",
 };
 
+export const EXERCISE_MUSCLE_MAP: Record<string, MuscleGroup> = {};
+
 export const EXERCISE_LIBRARY: Record<"PUSH" | "PULL" | "LEGS" | "CARDIO", ExerciseTemplate[]> = {
   PUSH: [
     { name: "Développé couché barre", muscle: "Pectoraux", icon: "🏋️", repRange: "6-12", sets: 4, rest: 120 },
@@ -94,3 +96,8 @@ export const EXERCISE_LIBRARY: Record<"PUSH" | "PULL" | "LEGS" | "CARDIO", Exerc
     { name: "Elliptique", muscle: "Cardio", icon: "🏃", repRange: "20-40 min", sets: 1, rest: 0 },
   ],
 };
+
+// Populate lookup map once module is loaded
+for (const exercises of Object.values(EXERCISE_LIBRARY)) {
+  for (const ex of exercises) EXERCISE_MUSCLE_MAP[ex.name] = ex.muscle;
+}

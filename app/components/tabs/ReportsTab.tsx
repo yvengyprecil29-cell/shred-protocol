@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, getISOWeek, getISOWeekYear, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { DailyLog, WhoopRow, WorkoutLogRow, SessionRow } from "@/lib/types";
 import { SESSION_TYPE_LABELS } from "@/lib/constants";
@@ -37,7 +37,6 @@ type PeriodReport = {
   avgCalories: number;
   avgRecovery: number;
   avgHrv: number;
-  prs: { exercise: string; weight: number; reps: string }[];
   daysWithProteinOk: number;
   totalDays: number;
 };
@@ -56,16 +55,6 @@ function computeReport(label: string, from: Date, to: Date, workouts: WorkoutLog
     volumeByType[type] = (volumeByType[type] ?? 0) + w.weight_kg * (Number(w.reps_done) || 0);
   }
 
-  // PRs: best weight per exercise during the period
-  const byExercise: Record<string, WorkoutLogRow[]> = {};
-  for (const w of wInRange) {
-    (byExercise[w.exercise_name] = byExercise[w.exercise_name] ?? []).push(w);
-  }
-  const prs = Object.entries(byExercise).map(([exercise, rows]) => {
-    const best = rows.reduce((b, r) => r.weight_kg > b.weight_kg ? r : b, rows[0]);
-    return { exercise, weight: best.weight_kg, reps: best.reps_done };
-  }).sort((a, b) => b.weight - a.weight).slice(0, 5);
-
   const avgProtein = lInRange.length ? lInRange.reduce((s, l) => s + (l.protein ?? 0), 0) / lInRange.length : 0;
   const avgCalories = lInRange.length ? lInRange.reduce((s, l) => s + (l.calories ?? 0), 0) / lInRange.length : 0;
   const avgRecovery = wInRangeWhoop.length ? wInRangeWhoop.reduce((s, w) => s + w.recovery_score, 0) / wInRangeWhoop.length : 0;
@@ -83,7 +72,6 @@ function computeReport(label: string, from: Date, to: Date, workouts: WorkoutLog
     avgCalories: Math.round(avgCalories),
     avgRecovery: Math.round(avgRecovery),
     avgHrv: Math.round(avgHrv),
-    prs,
     daysWithProteinOk,
     totalDays: lInRange.length,
   };
@@ -133,21 +121,6 @@ function ReportCard({ r }: { r: PeriodReport }) {
         </div>
       )}
 
-      {/* PRs */}
-      {r.prs.length > 0 && (
-        <div>
-          <p className="font-mono text-xs text-shred-muted uppercase tracking-wider mb-2">Top performances</p>
-          <div className="space-y-1">
-            {r.prs.map((p) => (
-              <div key={p.exercise} className="flex justify-between items-center text-sm font-mono">
-                <span className="text-shred-text truncate mr-4">{p.exercise}</span>
-                <span className="text-shred-accent3 shrink-0">{p.weight} kg × {p.reps}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Nutrition & WHOOP */}
       <div className="grid sm:grid-cols-2 gap-3 text-sm">
         <div className="rounded-shred border border-shred-border bg-shred-surface2 p-3">
@@ -179,6 +152,121 @@ function ReportCard({ r }: { r: PeriodReport }) {
       {r.sessions === 0 && (
         <p className="text-sm text-shred-muted font-mono">Aucune séance enregistrée sur cette période.</p>
       )}
+    </div>
+  );
+}
+
+// ─── Tableau annuel 52 semaines ───────────────────────────────────────────────
+
+function AnnualTable({ workouts, sessions }: { workouts: WorkoutLogRow[]; sessions: SessionWithEx[] }) {
+  const now = new Date();
+  const currentWeek = getISOWeek(now);
+  const currentYear = getISOWeekYear(now);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggle = (group: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+
+  // Build session id → display name map
+  const sessionNameMap: Record<number, string> = {};
+  for (const s of sessions) {
+    sessionNameMap[s.id] = s.name || (SESSION_TYPE_LABELS[s.type as keyof typeof SESSION_TYPE_LABELS] ?? s.type) || "AUTRE";
+  }
+
+  // exercise_name → group name (the session it was last seen in)
+  const exerciseGroup: Record<string, string> = {};
+  const byExercise: Record<string, Record<number, { weight: number; reps: string }>> = {};
+  const byGroupWeek: Record<string, Record<number, number>> = {};
+
+  for (const w of workouts) {
+    const d = parseISO(w.date + "T12:00:00");
+    if (getISOWeekYear(d) !== currentYear) continue;
+    const wk = getISOWeek(d);
+    const group = sessionNameMap[w.session_id] ?? "AUTRE";
+    exerciseGroup[w.exercise_name] = group;
+    if (!byExercise[w.exercise_name]) byExercise[w.exercise_name] = {};
+    const cur = byExercise[w.exercise_name][wk];
+    if (!cur || w.weight_kg > cur.weight) byExercise[w.exercise_name][wk] = { weight: w.weight_kg, reps: w.reps_done };
+    if (!byGroupWeek[group]) byGroupWeek[group] = {};
+    byGroupWeek[group][wk] = (byGroupWeek[group][wk] ?? 0) + w.weight_kg * (Number(w.reps_done) || 0);
+  }
+
+  if (Object.keys(byExercise).length === 0) {
+    return <p className="text-sm text-shred-muted font-mono">Aucune donnée enregistrée pour cette année.</p>;
+  }
+
+  const byGroup: Record<string, string[]> = {};
+  for (const [ex, group] of Object.entries(exerciseGroup)) {
+    if (!byGroup[group]) byGroup[group] = [];
+    byGroup[group].push(ex);
+  }
+  for (const exList of Object.values(byGroup)) exList.sort();
+
+  const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
+  function fmtVol(v: number) {
+    return v >= 1000 ? `${Math.round(v / 100) / 10}t` : `${Math.round(v)}`;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-shred border border-shred-border">
+      <table className="text-xs font-mono border-collapse">
+        <thead>
+          <tr>
+            <th className="sticky left-0 z-20 bg-shred-surface2 text-left py-2 px-3 border-b border-r border-shred-border min-w-[170px] font-mono text-shred-muted uppercase tracking-wider">
+              Groupe / Exercice
+            </th>
+            {weeks.map((w) => (
+              <th key={w} className={`py-2 px-1 text-center border-b border-shred-border min-w-[52px] ${w === currentWeek ? "text-shred-accent bg-shred-accent/10 font-bold" : "text-shred-muted"}`}>
+                S{String(w).padStart(2, "0")}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byGroup).flatMap(([group, exercises]) => [
+            <tr
+              key={`grp-${group}`}
+              onClick={() => toggle(group)}
+              className="cursor-pointer hover:bg-shred-surface2/20 border-b border-shred-border/40 select-none"
+            >
+              <td className="sticky left-0 z-10 bg-shred-surface py-2 px-3 border-r border-shred-border/30 text-shred-accent3 uppercase tracking-widest">
+                <span className="mr-2 text-shred-accent3/50 text-[10px]">{expanded.has(group) ? "▼" : "▶"}</span>
+                {group}
+                <span className="ml-2 text-shred-muted/40 normal-case tracking-normal text-[10px]">({exercises.length})</span>
+              </td>
+              {weeks.map((w) => {
+                const v = byGroupWeek[group]?.[w];
+                return (
+                  <td key={w} className={`py-2 px-1 text-center whitespace-nowrap ${w === currentWeek ? "bg-shred-accent/5 text-shred-accent3/80 font-bold" : v ? "text-shred-accent3/50" : "text-shred-muted/20"}`}>
+                    {v ? fmtVol(v) : "·"}
+                  </td>
+                );
+              })}
+            </tr>,
+            ...(expanded.has(group) ? exercises.map((ex) => (
+              <tr key={ex} className="hover:bg-shred-surface2/30 border-b border-shred-border/20">
+                <td className="sticky left-0 bg-shred-bg py-1.5 pl-8 pr-3 text-shred-text border-r border-shred-border/30 max-w-[170px] truncate">
+                  {ex}
+                </td>
+                {weeks.map((w) => {
+                  const cell = byExercise[ex]?.[w];
+                  return (
+                    <td key={w} className={`py-1.5 px-1 text-center whitespace-nowrap ${w === currentWeek ? "bg-shred-accent/5 text-shred-accent font-bold" : cell ? "text-shred-text" : "text-shred-muted/20"}`}>
+                      {cell ? `${cell.weight}×${cell.reps}` : "·"}
+                    </td>
+                  );
+                })}
+              </tr>
+            )) : []),
+          ])}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -228,9 +316,21 @@ export function ReportsTab() {
       {loading ? (
         <div className="text-shred-muted font-mono text-sm animate-pulse">Chargement des données…</div>
       ) : (
-        <div className="space-y-6">
-          {reports.map((r) => <ReportCard key={r.label} r={r} />)}
-        </div>
+        <>
+          <div className="space-y-6">
+            {reports.map((r) => <ReportCard key={r.label} r={r} />)}
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h2 className="font-display text-2xl tracking-wide">Tableau annuel — 52 semaines</h2>
+              <p className="text-shred-muted mt-1 text-sm font-mono">
+                Meilleure charge × reps par exercice chaque semaine · Semaine courante en surbrillance
+              </p>
+            </div>
+            <AnnualTable workouts={workouts} sessions={sessions} />
+          </div>
+        </>
       )}
     </div>
   );
