@@ -57,7 +57,7 @@ export function TrackingTab() {
 
   const loadTodaySummary = useCallback(async () => {
     try {
-      const res = await fetch(`/api/today-summary?date=${date}`);
+      const res = await fetch(`/api/today-summary?date=${date}`, { cache: "no-store" });
       const j = await res.json() as { ok: boolean; data?: TodaySummary };
       if (j.ok && j.data) setTodaySummary(j.data);
     } catch { /* ignore */ }

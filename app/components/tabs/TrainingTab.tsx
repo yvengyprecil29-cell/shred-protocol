@@ -492,6 +492,7 @@ export function TrainingTab({ onSessionMutated }: { onSessionMutated?: () => voi
     }
     showToast("✓ Performance enregistrée !");
     setLastSaved(new Date());
+    onSessionMutated?.();
     fetch("/api/workout-logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: logSessionId, date: logDate, rows }) })
       .then(async (res) => {
         const j = await res.json();

@@ -15,7 +15,9 @@ import {
   YAxis,
 } from "recharts";
 import { MACRO_REST, MACRO_TRAINING, PROTEIN_OK_THRESHOLD, USER } from "@/lib/constants";
-import type { DailyLog, SessionRow, WorkoutLogRow } from "@/lib/types";
+import type { DailyLog, ExerciseRow, SessionRow, WorkoutLogRow } from "@/lib/types";
+
+type SessionWithEx = SessionRow & { exercises?: ExerciseRow[] };
 import { localStore } from "@/lib/localStore";
 
 function targetCals(day: string): number {
@@ -35,10 +37,21 @@ type ExerciseStat = {
   sessionCount: number;
 };
 
-function computeExerciseStats(wl: WorkoutLogRow[], sessions: SessionRow[]): ExerciseStat[] {
+function computeExerciseStats(wl: WorkoutLogRow[], sessions: SessionWithEx[]): ExerciseStat[] {
   const sessionNameMap: Record<number, string> = {};
   for (const s of sessions) {
     sessionNameMap[s.id] = s.name || s.type || "AUTRE";
+  }
+
+  // Map exercise name → session name for exercises defined in sessions
+  const exerciseSessionMap: Record<string, string> = {};
+  for (const s of sessions) {
+    if (!(s.template)) {
+      const muscle = s.name || s.type || "AUTRE";
+      for (const ex of s.exercises ?? []) {
+        if (!exerciseSessionMap[ex.name]) exerciseSessionMap[ex.name] = muscle;
+      }
+    }
   }
 
   const byExercise: Record<string, WorkoutLogRow[]> = {};
@@ -46,7 +59,29 @@ function computeExerciseStats(wl: WorkoutLogRow[], sessions: SessionRow[]): Exer
     if (!byExercise[r.exercise_name]) byExercise[r.exercise_name] = [];
     byExercise[r.exercise_name].push(r);
   }
+
+  // Add exercises defined in non-template sessions but never logged yet
+  for (const s of sessions) {
+    if (!s.template) {
+      for (const ex of s.exercises ?? []) {
+        if (!byExercise[ex.name]) byExercise[ex.name] = [];
+      }
+    }
+  }
+
   return Object.entries(byExercise).map(([name, rows]) => {
+    if (rows.length === 0) {
+      return {
+        name,
+        muscle: exerciseSessionMap[name] ?? "AUTRE",
+        lastDate: "",
+        bestSet: null,
+        trend: "same" as const,
+        weightDiff: 0,
+        isPR: false,
+        sessionCount: 0,
+      };
+    }
     const dates = [...new Set(rows.map((r) => r.date))].sort((a, b) => b.localeCompare(a));
     const lastDate = dates[0] ?? "";
     const prevDate = dates[1];
@@ -60,9 +95,9 @@ function computeExerciseStats(wl: WorkoutLogRow[], sessions: SessionRow[]): Exer
     const bestSet = lastRows.reduce<WorkoutLogRow | null>((best, r) => !best || r.weight_kg > best.weight_kg ? r : best, null);
     const trend = prevVol === 0 ? "same" : lastVol > prevVol * 1.01 ? "up" : lastVol < prevVol * 0.99 ? "down" : "same";
     const isPR = prevMaxW > 0 && lastMaxW > prevMaxW && lastMaxW >= allTimeMax;
-    // Group by the session the exercise was most recently logged in
     const latestRow = rows.reduce((a, b) => (a.date >= b.date ? a : b), rows[0]);
-    const muscle = sessionNameMap[latestRow.session_id] ?? "AUTRE";
+    // Prefer session definition mapping; fall back to workout_log session_id
+    const muscle = exerciseSessionMap[name] ?? sessionNameMap[latestRow.session_id] ?? "AUTRE";
     return {
       name,
       muscle,
@@ -78,7 +113,7 @@ function computeExerciseStats(wl: WorkoutLogRow[], sessions: SessionRow[]): Exer
 
 // ─── Accordion component ──────────────────────────────────────────────────────
 
-function ExerciseAccordion({ wl, sessions }: { wl: WorkoutLogRow[]; sessions: SessionRow[] }) {
+function ExerciseAccordion({ wl, sessions }: { wl: WorkoutLogRow[]; sessions: SessionWithEx[] }) {
   const [open, setOpen] = useState<string | null>(null);
 
   const stats = useMemo(() => computeExerciseStats(wl, sessions), [wl, sessions]);
@@ -170,7 +205,7 @@ export function ProgressTab() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [wl, setWl] = useState<WorkoutLogRow[]>([]);
   const [walks, setWalks] = useState<{ date: string }[]>([]);
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [sessions, setSessions] = useState<SessionWithEx[]>([]);
   const [pickExercise, setPickExercise] = useState("");
 
   const load = useCallback(async () => {
@@ -187,8 +222,8 @@ export function ProgressTab() {
     else setWalks(localStore.getWalks() as { date: string }[]);
     if (wk.ok && kj.ok) setWl(kj.data as WorkoutLogRow[]);
     else setWl(localStore.getWorkoutLogs() as WorkoutLogRow[]);
-    if (sr.ok && sj.ok) setSessions(sj.data as SessionRow[]);
-    else setSessions(localStore.getSessions() as SessionRow[]);
+    if (sr.ok && sj.ok) setSessions(sj.data as SessionWithEx[]);
+    else setSessions(localStore.getSessions() as SessionWithEx[]);
   }, []);
 
   useEffect(() => {
