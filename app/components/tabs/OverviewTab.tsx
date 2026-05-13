@@ -118,7 +118,6 @@ export function OverviewTab({ sessionRefreshKey = 0 }: { sessionRefreshKey?: num
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [today, setToday] = useState<TodaySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debugRaw, setDebugRaw] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -135,7 +134,6 @@ export function OverviewTab({ sessionRefreshKey = 0 }: { sessionRefreshKey?: num
     fetch(`/api/today-summary?date=${date}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((j: { ok: boolean; data?: TodaySummary }) => {
-        setDebugRaw(JSON.stringify(j, null, 2));
         if (j.ok && j.data) setToday(j.data);
       })
       .catch(() => {})
@@ -381,13 +379,7 @@ export function OverviewTab({ sessionRefreshKey = 0 }: { sessionRefreshKey?: num
         ))}
       </div>
 
-      {/* ── DEBUG — remove once confirmed ── */}
-      {debugRaw && (
-        <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/5 p-3">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-yellow-400 mb-1">DEBUG — /api/today-summary raw response</p>
-          <pre className="font-mono text-[9px] text-yellow-300/70 whitespace-pre-wrap break-all">{debugRaw}</pre>
-        </div>
-      )}
+
     </div>
   );
 }

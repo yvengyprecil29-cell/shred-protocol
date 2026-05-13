@@ -31,8 +31,6 @@ export async function GET(req: Request) {
     });
   }
 
-  const _debug = { date, wlSessionIds: sessionIds, sessionRows: sessionsResult.rows };
-
   // Most recent walk for this date
   const walkResult = await db.execute({
     sql: `SELECT duration_minutes, distance_km, speed_kmh, incline_percent FROM fast_walks WHERE date = ? ORDER BY id DESC LIMIT 1`,
@@ -66,7 +64,6 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    _debug,
     data: {
       date,
       sessions: sessionsResult.rows as unknown as SessionRow[],
